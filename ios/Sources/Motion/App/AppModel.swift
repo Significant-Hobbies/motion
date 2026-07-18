@@ -149,10 +149,12 @@ final class AppModel {
         }
 
         // Stream to the browser relay IN ADDITION to (and independent of) the local game.
-        // Runs straight from setup — no calibration/webview required. Only send usable
-        // frames (tracking ok + joints present); tracking transitions are cheap so we let
-        // the display infer loss from the packet gap.
-        if streamToWebsite, let socket = roomSocket, tracking == .ok, let joints {
+        // Runs straight from setup — no calibration/webview required. We stream whenever
+        // Vision detected ANY body this frame (`joints` present) and tracking isn't fully
+        // lost — deliberately NOT gated on full-body `.ok`, so a desk / upper-body-only
+        // pose still streams (the motion-maker is upper-body friendly). The display infers
+        // loss from the packet gap.
+        if streamToWebsite, let socket = roomSocket, tracking != .lost, let joints {
             streamSeq += 1
             let packet = PosePacket(
                 seq: streamSeq,

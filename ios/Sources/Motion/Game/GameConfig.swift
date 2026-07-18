@@ -34,7 +34,7 @@ import Foundation
 
 /// Mac LAN IP the Vite dev server listens on. EDIT THIS to your Mac's Wi-Fi IP
 /// (System Settings → Wi-Fi → Details), or override it at runtime in the app.
-let MAC_LAN_IP = "192.168.1.10"
+let MAC_LAN_IP = "192.168.29.145"
 
 /// Port the Vite dev server listens on (`npm --workspace web run dev`).
 let VITE_DEV_PORT = 5173

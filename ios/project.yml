@@ -68,6 +68,11 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
         # SwiftUI @main App lifecycle — no AppDelegate/SceneDelegate needed.
         ENABLE_PREVIEWS: YES
+        # Default signing: Sarthak Agrawal's personal (free) Apple ID team, so the
+        # project builds to a device without picking a team each time. Automatic
+        # signing lets the free team mint the provisioning profile.
+        DEVELOPMENT_TEAM: H77425A5P9
+        CODE_SIGN_STYLE: Automatic
     # System frameworks. AVFoundation + Vision + SwiftUI are weak-implicit via import,
     # but we link them explicitly for clarity. No SPM dependencies are required.
     dependencies:
