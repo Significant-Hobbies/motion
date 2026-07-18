@@ -143,6 +143,17 @@ struct HandState: Codable, Sendable {
     let right: Double
 }
 
+/// Precise index-fingertip positions from ROI-zoomed hand tracking. Mirrors the TS
+/// `Fingertips` interface: each is `[x, y]` in 0..1, origin top-left, mirror-corrected
+/// (same convention as `Joints`/`HandState`), used for a cursor / air-drawing.
+/// Each side is OPTIONAL — a fingertip not confidently detected this frame is left `nil`
+/// and, being optional, is OMITTED from the JSON entirely so it matches the TS
+/// `left?`/`right?` fields exactly.
+struct Fingertips: Codable, Sendable {
+    let left: Point2?
+    let right: Point2?
+}
+
 // MARK: - Outbound messages (controller → server)
 
 /// ~20/s pose packet. `sentAt` is our monotonic clock (ms) for latency math.
@@ -157,8 +168,13 @@ struct PosePacket: Codable, Sendable {
     /// because it is optional it is OMITTED from the JSON entirely when absent — matching
     /// the TS optional field `hands?: HandState` so old/new relays both accept the packet.
     let hands: HandState?
+    /// Optional precise index-fingertips (added v1.1, backward-compatible). `nil` = unknown,
+    /// and because it is optional it is OMITTED from the JSON entirely when absent — matching
+    /// the TS optional field `fingertips?: Fingertips` so old/new relays both accept the packet.
+    let fingertips: Fingertips?
 
-    init(seq: Int, sentAt: Double, quality: Double, joints: Joints, hands: HandState? = nil) {
+    init(seq: Int, sentAt: Double, quality: Double, joints: Joints,
+         hands: HandState? = nil, fingertips: Fingertips? = nil) {
         self.v = PROTOCOL_VERSION
         self.type = "pose"
         self.seq = seq
@@ -166,6 +182,7 @@ struct PosePacket: Codable, Sendable {
         self.quality = quality
         self.joints = joints
         self.hands = hands
+        self.fingertips = fingertips
     }
 }
 

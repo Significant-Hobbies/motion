@@ -39,6 +39,10 @@ export class KeyboardDebugController implements BodyController {
   leanAmount = 0;
   leftHandOpen = 1;
   rightHandOpen = 1;
+  // Mirror the debug hand positions as "fingertips" so the motion-maker cursor
+  // shows in mouse mode too (set once the mouse has moved; undefined otherwise).
+  leftFingertip: [number, number] | undefined = undefined;
+  rightFingertip: [number, number] | undefined = undefined;
   trackingQuality = 1;
   health: TrackingHealth = "no_signal";
   hasRequiredJoints = false;
@@ -152,11 +156,16 @@ export class KeyboardDebugController implements BodyController {
       this.hasRequiredJoints = true;
       this.ageMs = 0;
       this.trackingQuality = 1;
+      // Precise-fingertip stand-in tracks the debug hands.
+      this.leftFingertip = [this.joints.leftHand[0], this.joints.leftHand[1]];
+      this.rightFingertip = [this.joints.rightHand[0], this.joints.rightHand[1]];
     } else {
       this.health = "no_signal";
       this.hasRequiredJoints = false;
       this.ageMs = Infinity;
       this.trackingQuality = 0;
+      this.leftFingertip = undefined;
+      this.rightFingertip = undefined;
     }
   }
 

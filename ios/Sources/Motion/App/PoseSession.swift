@@ -98,7 +98,8 @@ extension PoseSession: PoseEstimatorDelegate {
             tracking: verdict.tracking,
             guidance: verdict.guidance,
             ready: verdict.ready,
-            hands: frame.hands
+            hands: frame.hands,
+            fingertips: frame.fingertips
         )
     }
 
@@ -110,7 +111,8 @@ extension PoseSession: PoseEstimatorDelegate {
             tracking: verdict.tracking,
             guidance: verdict.guidance,
             ready: verdict.ready,
-            hands: nil
+            hands: nil,
+            fingertips: nil
         )
     }
 }

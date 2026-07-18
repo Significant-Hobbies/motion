@@ -75,6 +75,9 @@ final class AppModel {
     /// Latest per-hand openness 0..1 (0 = fist, 1 = open palm), for the outgoing packet and
     /// an optional on-screen debug readout. `nil` until hands are first detected.
     var hands: HandState?
+    /// Latest precise index-fingertips (top-left, mirror-corrected, 0..1) from the ROI-zoomed
+    /// hand pass, for the outgoing packet / a cursor. `nil` until first detected.
+    var fingertips: Fingertips?
 
     /// The current UI phase. Views observe changes to route.
     var phase: Phase = .setup
@@ -134,7 +137,7 @@ final class AppModel {
     ///   - guidance: matching human guidance string
     ///   - ready: whether setup has been good long enough
     func ingest(joints: Joints?, quality: Double, tracking: TrackingState,
-                guidance: String, ready: Bool, hands: HandState?) {
+                guidance: String, ready: Bool, hands: HandState?, fingertips: Fingertips? = nil) {
         self.joints = joints
         self.quality = quality
         self.tracking = tracking
@@ -143,12 +146,14 @@ final class AppModel {
         // Hold the last known hands so a body-only frame doesn't blank the readout; the
         // packet still only carries hands when we have a value.
         if let hands { self.hands = hands }
+        // Same hold-last behavior for fingertips so a brief dropout doesn't blank a cursor.
+        if let fingertips { self.fingertips = fingertips }
 
-        // While playing, forward pose + tracking (with hands) into the web game in-process.
-        // PoseBridge handles change-detection for tracking and the ~30 Hz pose throttle.
+        // While playing, forward pose + tracking (with hands + fingertips) into the web game
+        // in-process. PoseBridge handles change-detection for tracking and the ~30 Hz throttle.
         if phase == .game {
             bridge.pushLivePose(joints: joints, quality: quality, tracking: tracking,
-                                hands: self.hands)
+                                hands: self.hands, fingertips: self.fingertips)
         }
 
         // Stream to the browser relay IN ADDITION to (and independent of) the local game.
@@ -164,7 +169,8 @@ final class AppModel {
                 sentAt: ProcessInfo.processInfo.systemUptime * 1000.0,
                 quality: quality,
                 joints: joints,
-                hands: self.hands
+                hands: self.hands,
+                fingertips: self.fingertips
             )
             socket.send(packet)
         }

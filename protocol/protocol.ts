@@ -77,6 +77,13 @@ export interface HandState {
   right: number;
 }
 
+/** Precise index-fingertip positions from ROI-zoomed hand tracking, [x,y] 0..1
+ * top-left, mirror-corrected. Used for a cursor / air-drawing. Optional (v1.1+). */
+export interface Fingertips {
+  left?: [number, number];
+  right?: [number, number];
+}
+
 /** ~20/s. `sentAt` is the controller's monotonic clock (ms) for latency math. */
 export interface PosePacket {
   v: 1;
@@ -87,6 +94,8 @@ export interface PosePacket {
   joints: Joints;
   /** Optional hand open/close (added v1.1, backward-compatible). Absent = unknown. */
   hands?: HandState;
+  /** Optional precise index-fingertips (v1.1+), from ROI-zoomed hand tracking. */
+  fingertips?: Fingertips;
 }
 
 /** Controller setup/tracking status, driving the display's readiness UI. */

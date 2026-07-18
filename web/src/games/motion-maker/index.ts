@@ -152,11 +152,15 @@ export class MotionMaker implements Game {
     this.integrateObjects(dt);
   }
 
-  /** Update smoothed hand positions + velocity from the body joints. */
+  /**
+   * Update smoothed hand positions + velocity used for grabbing. Prefer the
+   * precise index-fingertip when the controller exposes it (most accurate grab
+   * point); fall back to the smoothed hand joint when the fingertip is absent.
+   */
   private trackHands(dt: number, body: BodyController): void {
     const map: Record<Which, readonly [number, number]> = {
-      left: body.joints.leftHand,
-      right: body.joints.rightHand,
+      left: body.leftFingertip ?? body.joints.leftHand,
+      right: body.rightFingertip ?? body.joints.rightHand,
     };
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
@@ -401,6 +405,48 @@ export class MotionMaker implements Game {
       body.rightHandOpen,
       this.hands.right.holding !== null,
     );
+
+    // Precise fingertip cursors, drawn ON TOP of the hands so the user can see
+    // hand-tracking accuracy. Only drawn when the controller exposes a fingertip.
+    if (body.leftFingertip) {
+      this.drawCursor(r, body.leftFingertip, body.leftHandOpen, "#35e0c8");
+    }
+    if (body.rightFingertip) {
+      this.drawCursor(r, body.rightFingertip, body.rightHandOpen, "#ffb020");
+    }
+  }
+
+  /**
+   * Crisp fingertip cursor: a filled dot inside a thin ring, in the hand's color.
+   * Brightens + enlarges slightly when that hand is closed (grabbing), so open vs
+   * closed reads at the cursor too.
+   */
+  private drawCursor(
+    r: Renderer,
+    fingertip: readonly [number, number],
+    open: number,
+    color: string,
+  ): void {
+    const { ctx } = r;
+    const [x, y] = r.toPx(fingertip[0], fingertip[1]);
+    const closed = open < GRAB_THRESHOLD;
+    const dot = Math.max(4, r.sx(closed ? 0.014 : 0.01));
+    const ring = dot + Math.max(3, r.sx(0.009));
+
+    ctx.save();
+    ctx.globalAlpha = closed ? 1 : 0.85;
+    // Thin ring.
+    ctx.strokeStyle = color;
+    ctx.lineWidth = Math.max(2, r.sx(0.004));
+    ctx.beginPath();
+    ctx.arc(x, y, ring, 0, Math.PI * 2);
+    ctx.stroke();
+    // Filled dot (white core when closed for extra pop).
+    ctx.fillStyle = closed ? "#ffffff" : color;
+    ctx.beginPath();
+    ctx.arc(x, y, dot, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
   }
 
   /** Open hand = a spread ring of fingers; closed hand = a filled fist. */

@@ -33,6 +33,14 @@ export interface BodyController {
   readonly leftHandOpen: number;
   /** Right-hand openness (0 closed … 1 open). Matches `joints.rightHand`. */
   readonly rightHandOpen: number;
+  /**
+   * Precise left index-fingertip in 0..1 (top-left origin), from ROI-zoomed hand
+   * tracking. Smoothed like the joints. Undefined when the source has no fingertip
+   * data (so a cursor renderer can hide it). Matches `joints.leftHand`.
+   */
+  readonly leftFingertip?: [number, number] | undefined;
+  /** Precise right index-fingertip (0..1), or undefined when absent. */
+  readonly rightFingertip?: [number, number] | undefined;
   /** 0..1 aggregate confidence, blended with staleness. */
   readonly trackingQuality: number;
   /** Health classification the readiness gate + game pause read. */
@@ -105,6 +113,9 @@ export abstract class PoseControllerBase implements BodyController {
   // Default open (1) so nothing grabs before real hand data arrives.
   leftHandOpen = 1;
   rightHandOpen = 1;
+  // Undefined until precise fingertip data arrives; cleared again after a dropout.
+  leftFingertip: [number, number] | undefined = undefined;
+  rightFingertip: [number, number] | undefined = undefined;
   trackingQuality = 0;
   health: TrackingHealth = "no_signal";
   hasRequiredJoints = false;
@@ -120,6 +131,14 @@ export abstract class PoseControllerBase implements BodyController {
   private armAbsent: Record<string, number> = Object.fromEntries(
     ARM_JOINT_NAMES.map((n) => [n, ARM_ABSENCE_GRACE + 1]),
   );
+
+  // Per-fingertip absence counter, same brief-dropout tolerance as the arm joints:
+  // hold the last smoothed fingertip for a short grace window before clearing it to
+  // undefined (so the cursor hides only when the fingertip is genuinely gone).
+  private fingertipAbsent: Record<"left" | "right", number> = {
+    left: ARM_ABSENCE_GRACE + 1,
+    right: ARM_ABSENCE_GRACE + 1,
+  };
 
   // Standing torso-Y baseline captured once when the first good pose arrives.
   private standTorsoY: number | null = null;
@@ -172,8 +191,43 @@ export abstract class PoseControllerBase implements BodyController {
     this.leftHandOpen += (targetLeft - this.leftHandOpen) * SMOOTH_ALPHA;
     this.rightHandOpen += (targetRight - this.rightHandOpen) * SMOOTH_ALPHA;
 
+    // Smooth the OPTIONAL precise fingertips, same brief-dropout tolerance as the
+    // arm joints: hold the last smoothed value for a short grace window when a
+    // packet omits one, then clear to undefined so the cursor hides.
+    this.leftFingertip = this.smoothFingertip(
+      "left",
+      this.leftFingertip,
+      p.fingertips?.left,
+    );
+    this.rightFingertip = this.smoothFingertip(
+      "right",
+      this.rightFingertip,
+      p.fingertips?.right,
+    );
+
     this.captureCalibration();
     this.deriveGestures();
+  }
+
+  /**
+   * Smooth one optional fingertip toward its incoming target. Present → EMA from
+   * the last value. Absent → hold the last smoothed value for ARM_ABSENCE_GRACE
+   * packets, then return undefined so the cursor hides.
+   */
+  private smoothFingertip(
+    which: "left" | "right",
+    prev: [number, number] | undefined,
+    incoming: [number, number] | undefined,
+  ): [number, number] | undefined {
+    if (incoming) {
+      this.fingertipAbsent[which] = 0;
+      return prev
+        ? lerpPoint(prev, incoming, SMOOTH_ALPHA)
+        : [incoming[0], incoming[1]];
+    }
+    this.fingertipAbsent[which] += 1;
+    if (this.fingertipAbsent[which] <= ARM_ABSENCE_GRACE) return prev;
+    return undefined;
   }
 
   private captureCalibration(): void {

@@ -88,8 +88,9 @@ final class PoseBridge {
     ///   - quality: aggregate confidence 0..1
     ///   - tracking: setup verdict from `SetupEvaluator`
     ///   - hands: latest per-hand openness 0..1 (nil if never detected), carried in the packet
+    ///   - fingertips: latest precise index-fingertips (nil if never detected), carried too
     func pushLivePose(joints: Joints?, quality: Double, tracking: TrackingState,
-                      hands: HandState? = nil) {
+                      hands: HandState? = nil, fingertips: Fingertips? = nil) {
         guard let coordinator else { return }
 
         // Tracking transitions are cheap and important (they pause/resume the game), so
@@ -114,7 +115,8 @@ final class PoseBridge {
             sentAt: now * 1000.0,
             quality: quality,
             joints: joints,
-            hands: hands
+            hands: hands,
+            fingertips: fingertips
         )
         // Encode to a compact JSON string and hand it to pushPose (the web bridge
         // JSON.parses string payloads). Encoding our fixed shape never fails in practice.
