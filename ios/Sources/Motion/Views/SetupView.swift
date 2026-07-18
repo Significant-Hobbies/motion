@@ -24,6 +24,10 @@ struct SetupView: View {
     @State private var calibration: CalibrationController?
     @State private var showDevField = false
 
+    /// Bumped when a clap fires the CTA, to drive a brief button pulse (nice-to-have feedback
+    /// so a far-away user sees their clap registered). Reset by the animation.
+    @State private var clapPulse = false
+
     /// Landscape when the vertical size class is compact (wide, short window). Used to keep
     /// the chrome reachable and the panels from eating the whole short axis in landscape.
     private var isLandscape: Bool { vSizeClass == .compact }
@@ -49,6 +53,21 @@ struct SetupView: View {
             .padding()
         }
         .onDisappear { calibration?.cancel() }
+        // Clap → primary CTA. This view owns the setup CTA, so it maps the clap to its own
+        // button: a clap acts exactly like tapping "Calibrate", but ONLY when that button is
+        // actually enabled (setup phase + ready). Anything else (not ready, mid-calibration)
+        // ignores the clap so a far-away user can't trigger a disabled/absent action.
+        .onChange(of: model.clapCount) { _, _ in
+            guard model.phase == .setup, model.readyToCalibrate else { return }
+            triggerClapPulse()
+            startCalibration()
+        }
+    }
+
+    /// Briefly flash the CTA so a clap from across the room gives visible confirmation.
+    private func triggerClapPulse() {
+        withAnimation(.easeOut(duration: 0.12)) { clapPulse = true }
+        withAnimation(.easeIn(duration: 0.28).delay(0.12)) { clapPulse = false }
     }
 
     // MARK: - Top bar
@@ -224,16 +243,29 @@ struct SetupView: View {
 
             switch model.phase {
             case .setup:
-                Button {
-                    startCalibration()
-                } label: {
-                    Text(model.readyToCalibrate ? "Calibrate" : "Get in frame to calibrate")
-                        .font(.headline)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
+                VStack(spacing: 6) {
+                    Button {
+                        startCalibration()
+                    } label: {
+                        Text(model.readyToCalibrate ? "Calibrate" : "Get in frame to calibrate")
+                            .font(.headline)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(!model.readyToCalibrate)
+                    // Brief pulse when a clap fires the button, so a far-away user sees it land.
+                    .scaleEffect(clapPulse ? 1.04 : 1.0)
+
+                    // Discoverability: once the button is clap-triggerable (ready) AND the user
+                    // is likely far from the phone (full-body mode = standing back), hint that a
+                    // clap works as a remote press. Quiet + consistent with the panel style.
+                    if model.readyToCalibrate && model.framingMode == .fullBody {
+                        Text("👏 or clap to continue")
+                            .font(.caption)
+                            .foregroundStyle(.white.opacity(0.75))
+                    }
                 }
-                .buttonStyle(.borderedProminent)
-                .disabled(!model.readyToCalibrate)
 
             case .calibration:
                 VStack(spacing: 8) {

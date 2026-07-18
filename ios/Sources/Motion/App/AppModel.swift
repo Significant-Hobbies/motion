@@ -34,6 +34,69 @@ enum Phase: Sendable, Equatable {
     case game         // full-screen web game; pose streams in-process via PoseBridge
 }
 
+/// Detects a "clap" purely from the two tracked HAND joints (`joints.leftHand` /
+/// `joints.rightHand`, normalized 0..1, top-left origin) — NO microphone, NO fingertips.
+///
+/// A clap is the CLOSING EDGE of the hands coming together: the hands were apart
+/// (separation > `openThreshold`) and then crossed under `closedThreshold` in one motion.
+/// Hysteresis + a min interval keep a single physical clap from firing more than once:
+///   • after firing, we ARM only once the hands separate back past `openThreshold`, so a
+///     sustained together-pose can't retrigger; and
+///   • claps closer together than `minInterval` are dropped (debounce).
+/// Missing/low-confidence hands are ignored (a `[0,0]` fallback joint never counts as a
+/// clap) so normal movement or a dropped hand can't produce a false positive.
+struct ClapDetector {
+    // MARK: Tunable thresholds (normalized hand-separation distance, 0..1 frame units)
+
+    /// Hands must be at least this far apart to be considered "open" / armed for a clap.
+    var openThreshold: Double = 0.22
+    /// Crossing below this separation (while armed) fires a clap.
+    var closedThreshold: Double = 0.10
+    /// Minimum wall-clock time between two accepted claps (seconds).
+    var minInterval: TimeInterval = 0.6
+
+    /// True once the hands have separated past `openThreshold` and are eligible to fire the
+    /// next clap. Starts false so the very first frame of a together-pose can't fire.
+    private var armed = false
+    /// `systemUptime` of the last accepted clap, for the debounce window.
+    private var lastClapAt: TimeInterval = -.greatestFiniteMagnitude
+
+    /// Feed one frame's joints. Returns `true` exactly on the frame a clap is detected.
+    /// `joints` may be nil (no body) — that simply can't fire and leaves state untouched.
+    mutating func update(joints: Joints?, now: TimeInterval) -> Bool {
+        guard let joints, let separation = handSeparation(joints) else { return false }
+
+        // Re-arm once the hands are clearly apart again.
+        if separation > openThreshold { armed = true }
+
+        // Fire on the closing edge: armed + hands now together + past the debounce window.
+        if armed, separation < closedThreshold, now - lastClapAt >= minInterval {
+            armed = false            // require a re-separation before the next clap
+            lastClapAt = now
+            return true
+        }
+        return false
+    }
+
+    /// Euclidean separation of the two hand joints, or nil if either hand is absent.
+    /// A missing REQUIRED joint decodes to the `[0,0]` fallback (see `Joints.init`), so we
+    /// treat a hand sitting exactly at the origin as "not present" to avoid false claps
+    /// when one hand isn't tracked.
+    private func handSeparation(_ j: Joints) -> Double? {
+        let l = j.leftHand, r = j.rightHand
+        guard l.count == 2, r.count == 2 else { return nil }
+        if isFallback(l) || isFallback(r) { return nil }
+        let dx = l[0] - r[0], dy = l[1] - r[1]
+        return (dx * dx + dy * dy).squareRoot()
+    }
+
+    /// A joint at exactly the top-left origin is the "missing joint" sentinel, not a real
+    /// hand at (0,0). Real tracked hands are never bit-exactly at the origin.
+    private func isFallback(_ p: Point2) -> Bool {
+        p[0] == 0 && p[1] == 0
+    }
+}
+
 @MainActor
 @Observable
 final class AppModel {
@@ -81,6 +144,18 @@ final class AppModel {
 
     /// The current UI phase. Views observe changes to route.
     var phase: Phase = .setup
+
+    // MARK: - Clap gesture (remote CTA press)
+
+    /// Monotonic counter that increments once per detected clap while NOT in `.game`. Views
+    /// observe this with `.onChange` and, if their primary CTA is visible + enabled, invoke
+    /// it — so a far-away user (full-body mode, standing back) can press "Calibrate" /
+    /// "Continue" by clapping instead of reaching the screen. See `ClapDetector` for the
+    /// pose-only detection. Never increments in `.game` (the web game owns its own input).
+    private(set) var clapCount: Int = 0
+
+    /// Pose-only clap detector, fed each frame from `ingest`. Thresholds live on the struct.
+    private var clapDetector = ClapDetector()
 
     // MARK: - Camera selection
 
@@ -190,6 +265,17 @@ final class AppModel {
         if let hands { self.hands = hands }
         // Same hold-last behavior for fingertips so a brief dropout doesn't blank a cursor.
         if let fingertips { self.fingertips = fingertips }
+
+        // Clap → remote CTA press. Detect purely from the two hand JOINTS (not fingertips)
+        // and surface it as an incrementing `clapCount` the setup/calibration views observe.
+        // Skip in `.game`: the web game handles its own input, so claps are ignored there.
+        // We always feed the detector so its arm/debounce state stays coherent, but only
+        // publish the event outside the game phase.
+        let clapped = clapDetector.update(joints: joints,
+                                          now: ProcessInfo.processInfo.systemUptime)
+        if clapped, phase != .game {
+            clapCount &+= 1
+        }
 
         // While playing, forward pose + tracking (with hands + fingertips) into the web game
         // in-process. PoseBridge handles change-detection for tracking and the ~30 Hz throttle.
