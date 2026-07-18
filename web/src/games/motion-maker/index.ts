@@ -40,6 +40,23 @@ const OBJ_RADIUS = 0.055;
 const BIN_W = 0.16;
 const BIN_H = 0.13;
 
+// ── Sword ─────────────────────────────────────────────────────────────────────
+// A sword is a special holdable object. It's grabbed with the same open→close
+// gesture as a ball, but when held it renders as a blade pointing along your
+// forearm (elbow→hand) and SLICES any free ball the blade sweeps through while
+// you swing — turning "pick things up" into "wield a weapon".
+
+/** Blade length beyond the hand (normalized, x-relative). */
+const SWORD_LEN = 0.3;
+/** Min hand speed (normalized/sec) for the moving blade to cut a ball. */
+const SLICE_SPEED = 1.0;
+/** How close (normalized) a ball's center must come to the blade line to be sliced. */
+const SLICE_RADIUS = OBJ_RADIUS + 0.03;
+/** Points for slicing a ball with the sword. */
+const SLICE_SCORE = 150;
+/** Number of free balls kept in play (the sword is extra, on top of these). */
+const BALL_COUNT = 4;
+
 /** Gentle upward-biased drift so free objects feel floaty, not heavy. */
 const GRAVITY = 0.018; // per second^2, normalized-y (down = +)
 const DRIFT = 0.006; // ambient horizontal wander
@@ -50,6 +67,8 @@ const COLORS = ["#5b8cff", "#35e0c8", "#ffb020", "#ff6b9d", "#b25cff"];
 
 type Which = "left" | "right";
 
+type Kind = "ball" | "sword";
+
 interface FloatObj {
   id: number;
   x: number;
@@ -57,10 +76,18 @@ interface FloatObj {
   vx: number;
   vy: number;
   color: string;
+  /** "ball" (grab + drop in bin) or "sword" (held weapon that slices balls). */
+  kind: Kind;
   /** Which hand holds it, or null if free. */
   heldBy: Which | null;
   /** Pop animation when scored (0..1), then respawn. */
   scoreAnim: number;
+  /**
+   * Blade tip in normalized coords (sword only). Recomputed from the forearm each
+   * frame while held; kept at a resting angle while free so it renders lying down.
+   */
+  tipX: number;
+  tipY: number;
 }
 
 /** Per-hand tracking of position history so we can impart toss velocity. */
@@ -96,7 +123,10 @@ export class MotionMaker implements Game {
   };
   private score = 0;
   private dropped = 0;
+  private sliced = 0;
   private binFlash = 0;
+  /** Brief white flash along a blade right after it slices something (0..1). */
+  private slashFlash: Record<Which, number> = { left: 0, right: 0 };
 
   /** Target bin, centered near the bottom-center of the play area. */
   private readonly bin = { x: 0.5, y: 0.82 };
@@ -114,13 +144,16 @@ export class MotionMaker implements Game {
     this.hands = { left: newHand(), right: newHand() };
     this.score = 0;
     this.dropped = 0;
+    this.sliced = 0;
     this.binFlash = 0;
+    this.slashFlash = { left: 0, right: 0 };
     this.lastBody = null;
     this.spawnInitial();
   }
 
   private spawnInitial(): void {
-    for (let i = 0; i < 4; i++) this.spawnObject();
+    for (let i = 0; i < BALL_COUNT; i++) this.spawnObject();
+    this.spawnSword();
   }
 
   private spawnObject(): void {
@@ -134,8 +167,31 @@ export class MotionMaker implements Game {
       vx: (Math.random() - 0.5) * 0.05,
       vy: 0,
       color: COLORS[this.nextId % COLORS.length] ?? "#5b8cff",
+      kind: "ball",
       heldBy: null,
       scoreAnim: 0,
+      tipX: x,
+      tipY: y,
+    });
+  }
+
+  /** The single sword. Starts to one side, resting, waiting to be grabbed. */
+  private spawnSword(): void {
+    const x = 0.16;
+    const y = 0.6;
+    this.objects.push({
+      id: this.nextId++,
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      color: "#dfe6ff",
+      kind: "sword",
+      heldBy: null,
+      scoreAnim: 0,
+      // Resting blade points up-and-slightly-out so it reads as a sword on the ground.
+      tipX: x + SWORD_LEN * 0.4,
+      tipY: y - SWORD_LEN,
     });
   }
 
@@ -146,7 +202,10 @@ export class MotionMaker implements Game {
   result(): GameResult {
     return {
       score: this.score,
-      stats: [{ label: "dropped in bin", value: String(this.dropped) }],
+      stats: [
+        { label: "dropped in bin", value: String(this.dropped) },
+        { label: "sliced", value: String(this.sliced) },
+      ],
     };
   }
 
@@ -156,6 +215,8 @@ export class MotionMaker implements Game {
     this.lastBody = body;
     const dt = dtMs / 1000;
     this.binFlash = Math.max(0, this.binFlash - dt);
+    this.slashFlash.left = Math.max(0, this.slashFlash.left - dt * 3);
+    this.slashFlash.right = Math.max(0, this.slashFlash.right - dt * 3);
 
     this.trackHands(dt, body);
     this.resolveGrabs("left", body.leftHandOpen);
@@ -255,12 +316,14 @@ export class MotionMaker implements Game {
       }
 
       if (o.heldBy !== null) {
-        // Follow the holding hand exactly (with a slight offset above it).
+        // Follow the holding hand exactly.
         const h = this.hands[o.heldBy];
         o.x = h.x;
         o.y = h.y;
         o.vx = h.vx;
         o.vy = h.vy;
+        // A held sword also tracks the forearm so the blade points where you aim.
+        if (o.kind === "sword") this.updateSwordBlade(o, o.heldBy);
         continue;
       }
 
@@ -288,7 +351,15 @@ export class MotionMaker implements Game {
         o.vy = -Math.abs(o.vy) * WALL_BOUNCE;
       }
 
-      // Scored if it lands inside the bin while free.
+      // A free sword drifts too, but keep its blade lying along its motion so it
+      // never renders as a bare point; it's never scored in the bin.
+      if (o.kind === "sword") {
+        o.tipX = o.x + SWORD_LEN * 0.4;
+        o.tipY = o.y - SWORD_LEN;
+        continue;
+      }
+
+      // Balls score if they land inside the bin while free.
       if (
         Math.abs(o.x - this.bin.x) < BIN_W &&
         Math.abs(o.y - this.bin.y) < BIN_H
@@ -300,9 +371,71 @@ export class MotionMaker implements Game {
       }
     }
 
-    // Remove fully-popped objects and top up so there's always something to play.
+    this.sliceWithSwords();
+
+    // Remove fully-popped BALLS and top up so there's always something to play.
+    // The sword is never removed (scoreAnim stays 0), so it persists across slices.
     this.objects = this.objects.filter((o) => o.scoreAnim < 1);
-    while (this.objects.length < 4) this.spawnObject();
+    const balls = this.objects.filter((o) => o.kind === "ball").length;
+    for (let i = balls; i < BALL_COUNT; i++) this.spawnObject();
+  }
+
+  /**
+   * Point the held sword's blade along the forearm (elbow→hand) so it swings with
+   * your arm. Falls back to the hand's recent velocity direction, then to straight
+   * up, when the elbow isn't tracked. Writes the blade tip in normalized coords.
+   */
+  private updateSwordBlade(o: FloatObj, which: Which): void {
+    const h = this.hands[which];
+    const elbow =
+      which === "left"
+        ? this.lastBody?.joints.leftElbow
+        : this.lastBody?.joints.rightElbow;
+
+    let dx = 0;
+    let dy = -1; // default: point up
+    if (elbow) {
+      dx = h.x - elbow[0];
+      dy = h.y - elbow[1];
+    } else if (Math.hypot(h.vx, h.vy) > 0.15) {
+      dx = h.vx;
+      dy = h.vy;
+    }
+    const len = Math.hypot(dx, dy) || 1;
+    o.tipX = h.x + (dx / len) * SWORD_LEN;
+    o.tipY = h.y + (dy / len) * SWORD_LEN;
+  }
+
+  /**
+   * For each held, fast-moving sword, slice every free ball whose center passes
+   * within SLICE_RADIUS of the blade segment (hand → tip). A still sword doesn't
+   * cut — you must swing it — so balls can rest on the blade without popping.
+   */
+  private sliceWithSwords(): void {
+    for (const sword of this.objects) {
+      if (sword.kind !== "sword" || sword.heldBy === null) continue;
+      const h = this.hands[sword.heldBy];
+      if (Math.hypot(h.vx, h.vy) < SLICE_SPEED) continue;
+
+      for (const ball of this.objects) {
+        if (ball.kind !== "ball" || ball.heldBy !== null || ball.scoreAnim > 0)
+          continue;
+        const d = distPointToSegment(
+          ball.x,
+          ball.y,
+          h.x,
+          h.y,
+          sword.tipX,
+          sword.tipY,
+        );
+        if (d < SLICE_RADIUS) {
+          ball.scoreAnim = 0.001; // start pop
+          this.score += SLICE_SCORE;
+          this.sliced++;
+          this.slashFlash[sword.heldBy] = 1;
+        }
+      }
+    }
   }
 
   // ── Render ──────────────────────────────────────────────────────────────────
@@ -311,6 +444,8 @@ export class MotionMaker implements Game {
     this.renderBin(r);
     this.renderObjects(r);
     this.renderAvatar(r);
+    // Swords last so a held blade sits cleanly on top of the hand/arm.
+    this.renderSwords(r);
     this.renderHud(r);
   }
 
@@ -343,6 +478,7 @@ export class MotionMaker implements Game {
   private renderObjects(r: Renderer): void {
     const { ctx } = r;
     for (const o of this.objects) {
+      if (o.kind === "sword") continue; // drawn by renderSwords()
       const [cx, cy] = r.toPx(o.x, o.y);
       const pop = o.scoreAnim > 0 ? 1 + o.scoreAnim * 0.8 : 1;
       const radius = r.sx(OBJ_RADIUS) * pop;
@@ -365,6 +501,87 @@ export class MotionMaker implements Game {
       ctx.beginPath();
       ctx.arc(cx - radius * 0.3, cy - radius * 0.3, radius * 0.35, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  /**
+   * Draw every sword as a blade: a wooden handle + gold crossguard at the grip
+   * (the hand, when held) and a steel blade running out to the tracked tip. A
+   * brief blue glow flashes down the blade right after it slices something.
+   */
+  private renderSwords(r: Renderer): void {
+    const { ctx } = r;
+    for (const o of this.objects) {
+      if (o.kind !== "sword" || o.scoreAnim > 0) continue;
+
+      const [gx, gy] = this.pt(r, [o.x, o.y]); // grip (hand when held)
+      const [tx, ty] = this.pt(r, [o.tipX, o.tipY]); // blade tip
+      const len = Math.hypot(tx - gx, ty - gy) || 1;
+      const ux = (tx - gx) / len; // unit vector along the blade
+      const uy = (ty - gy) / len;
+      const px = -uy; // perpendicular (crossguard axis)
+      const py = ux;
+      const held = o.heldBy !== null;
+      const flash = held ? this.slashFlash[o.heldBy as Which] : 0;
+
+      const handleLen = r.sx(0.05);
+      const guardHalf = r.sx(0.035);
+      const bladeW = Math.max(5, r.sx(0.014));
+
+      ctx.save();
+      ctx.lineCap = "round";
+
+      // Handle behind the grip + a gold pommel.
+      ctx.strokeStyle = "#6b4a2b";
+      ctx.lineWidth = Math.max(6, r.sx(0.018));
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(gx - ux * handleLen, gy - uy * handleLen);
+      ctx.stroke();
+      ctx.fillStyle = "#d9a441";
+      ctx.beginPath();
+      ctx.arc(
+        gx - ux * handleLen,
+        gy - uy * handleLen,
+        Math.max(4, r.sx(0.012)),
+        0,
+        Math.PI * 2,
+      );
+      ctx.fill();
+
+      // Gold crossguard, perpendicular at the grip.
+      ctx.strokeStyle = "#d9a441";
+      ctx.lineWidth = Math.max(5, r.sx(0.014));
+      ctx.beginPath();
+      ctx.moveTo(gx - px * guardHalf, gy - py * guardHalf);
+      ctx.lineTo(gx + px * guardHalf, gy + py * guardHalf);
+      ctx.stroke();
+
+      // Slice glow.
+      if (flash > 0) {
+        ctx.strokeStyle = `rgba(120,200,255,${0.55 * flash})`;
+        ctx.lineWidth = bladeW * 3;
+        ctx.beginPath();
+        ctx.moveTo(gx, gy);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+      }
+
+      // Steel blade + a brighter core.
+      ctx.strokeStyle = "#b9c4de";
+      ctx.lineWidth = bladeW;
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.strokeStyle = held ? "#ffffff" : "#eef2ff";
+      ctx.lineWidth = Math.max(2, bladeW * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
       ctx.restore();
     }
   }
@@ -506,12 +723,30 @@ export class MotionMaker implements Game {
     ctx.fillStyle = "#8a95b5";
     ctx.font = `${Math.round(r.sx(0.024))}px system-ui`;
     ctx.fillText(
-      "Close a hand near an object to grab · open to drop it in the bin",
+      "Grab a ball → drop it in the bin · grab the sword → swing to slice",
       p.x + r.sx(0.03),
       p.y + r.sy(0.1),
     );
     ctx.restore();
   }
+}
+
+/** Shortest distance from point (px,py) to the segment (ax,ay)–(bx,by). */
+function distPointToSegment(
+  px: number,
+  py: number,
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
+  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
+  t = t < 0 ? 0 : t > 1 ? 1 : t;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
 function roundRect(
