@@ -46,7 +46,17 @@ enum GameConfig {
         case bundled
     }
 
-    static let source: Source = .devServer
+    /// Set true to force the Vite dev server even when a bundled build is present
+    /// (useful while iterating on the web game from the phone). Default false.
+    static let forceDevServer = false
+
+    /// Effective source: prefer the self-contained bundled game when it ships in the
+    /// app (no Mac/network needed); otherwise fall back to the dev server. This makes
+    /// a release build "just work" while keeping the dev-server loop when unbundled.
+    static var source: Source {
+        if forceDevServer { return .devServer }
+        return bundledIndexURL() != nil ? .bundled : .devServer
+    }
 
     /// Query string that forces the web app into bridge transport. The web app also
     /// auto-selects bridge mode when `window.webkit.messageHandlers.motion` exists

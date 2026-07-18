@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>Motion — Display</title>
+    <style>
+      :root {
+        --bg: #05070d;
+        --panel: #0d1220;
+        --ink: #f4f7ff;
+        --muted: #8a95b5;
+        --accent: #35e0c8;
+        --accent-2: #ff4d6d;
+        --good: #35e0c8;
+        --warn: #ffcc33;
+        --bad: #ff4d6d;
+      }
+      * { box-sizing: border-box; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--ink);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+      #app { position: fixed; inset: 0; }
+      #game-canvas {
+        position: absolute;
+        inset: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+        background: #000;
+      }
+      /* HTML overlay layer for text-heavy screens; canvas draws the game/skeleton. */
+      #overlay {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+      #overlay > * { pointer-events: auto; }
+    </style>
+    <script type="module" crossorigin src="./assets/index-DSCq2PBS.js"></script>
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game-canvas"></canvas>
+      <div id="overlay"></div>
+    </div>
+  </body>
+</html>

@@ -33,6 +33,11 @@ targets:
       # Directory glob: every file under Sources is compiled, so new files (Game/,
       # Recording/ScreenRecorder.swift, Views/GameView.swift) are picked up automatically.
       - path: Sources
+      # The bundled web game (self-contained "pure app"). A FOLDER REFERENCE so it
+      # ships as a real `webgame/` directory (GameConfig loads webgame/index.html via
+      # file://). Regenerate with ./scripts/sync-webgame.sh; GameConfig auto-prefers it.
+      - path: Resources/webgame
+        type: folder
     info:
       # XcodeGen GENERATES this plist from the properties below on every `xcodegen
       # generate`, so the keys MUST live here (a hand-edited Info.plist would be
