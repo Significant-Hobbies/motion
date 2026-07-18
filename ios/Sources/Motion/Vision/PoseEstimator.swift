@@ -17,6 +17,13 @@
 //      a full-frame hand request so it degrades gracefully. See `computeHands(...)`.
 //
 //  COORDINATE PIPELINE (read carefully — there is no compiler to catch a flip):
+//    • DEPENDS ON A DISPLAY-UPRIGHT BUFFER. The camera connection is kept horizon-level
+//      by an `AVCaptureDevice.RotationCoordinator` (see CameraController), so the buffer
+//      handed to Vision is ALWAYS display-upright for the current device orientation —
+//      tall in portrait, wide in landscape, but never sideways. Because of that, the SAME
+//      mapping below (mirror x kept, y flipped) is correct in BOTH orientations; nothing
+//      here needs to branch on orientation. If you ever stop keeping the connection
+//      horizon-level, this mapping breaks in landscape.
 //    • Vision returns normalized points in [0,1] with origin BOTTOM-LEFT, y up.
 //    • The protocol wants origin TOP-LEFT, y down: so  y' = 1 - y.
 //    • The FRONT camera connection is configured with `isVideoMirrored = true`

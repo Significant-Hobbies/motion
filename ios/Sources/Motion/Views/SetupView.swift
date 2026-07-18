@@ -17,15 +17,22 @@ import SwiftUI
 
 struct SetupView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.horizontalSizeClass) private var hSizeClass
+    @Environment(\.verticalSizeClass) private var vSizeClass
     let session: PoseSession
 
     @State private var calibration: CalibrationController?
     @State private var showDevField = false
 
+    /// Landscape when the vertical size class is compact (wide, short window). Used to keep
+    /// the chrome reachable and the panels from eating the whole short axis in landscape.
+    private var isLandscape: Bool { vSizeClass == .compact }
+
     var body: some View {
         ZStack {
-            // Camera + overlay fill the screen.
-            CameraPreview(session: session.captureSession)
+            // Camera + overlay fill the screen — `.resizeAspectFill` keeps the (now upright)
+            // preview filling both a tall portrait and a wide landscape window.
+            CameraPreview(session: session)
                 .ignoresSafeArea()
             PoseOverlay(joints: model.joints, tracking: model.tracking)
                 .ignoresSafeArea()
@@ -33,7 +40,11 @@ struct SetupView: View {
             VStack {
                 topBar
                 Spacer()
+                // In landscape the window is short; constrain the bottom panel so it doesn't
+                // grow full-width and swallow the (already small) vertical space. In portrait
+                // it spans naturally.
                 bottomPanel
+                    .frame(maxWidth: isLandscape ? 520 : .infinity)
             }
             .padding()
         }
@@ -182,6 +193,9 @@ struct SetupView: View {
                     .foregroundStyle(.white)
                     .multilineTextAlignment(.leading)
                 Spacer()
+                // Subtle current-mode chip so the player knows why the guidance differs
+                // (full-body in portrait vs upper-body in landscape).
+                modeChip
             }
 
             switch model.phase {
@@ -212,6 +226,23 @@ struct SetupView: View {
         }
         .padding()
         .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 20))
+    }
+
+    /// A small pill showing the active framing mode ("Full-body" / "Upper-body"), with an
+    /// orientation-suggestive icon. Deliberately quiet — it's context, not a control.
+    private var modeChip: some View {
+        HStack(spacing: 4) {
+            Image(systemName: model.framingMode == .fullBody
+                  ? "figure.stand"
+                  : "hand.raised.fill")
+                .font(.caption2)
+            Text(model.framingMode.label)
+                .font(.caption2.bold())
+        }
+        .foregroundStyle(.white.opacity(0.85))
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(.white.opacity(0.12), in: Capsule())
     }
 
     private var calibrationPrompt: String {

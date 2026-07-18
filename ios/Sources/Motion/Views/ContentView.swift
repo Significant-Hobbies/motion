@@ -14,6 +14,9 @@
 //
 
 import SwiftUI
+#if canImport(UIKit)
+import UIKit
+#endif
 
 struct ContentView: View {
     @Environment(AppModel.self) private var model
@@ -34,13 +37,42 @@ struct ContentView: View {
             }
         }
         .animation(.default, value: model.phase)
+        // ORIENTATION IS THE MODE. Feed the current interface orientation into the model so
+        // it can pick full-body (portrait) vs upper-body (landscape). We read the window
+        // scene's `interfaceOrientation` (authoritative + already de-noised, unlike raw
+        // device motion which reports face-up/down) and refresh it on every orientation
+        // change notification. This also drives the initial mode on first appearance.
+        .onReceive(NotificationCenter.default.publisher(
+            for: UIDevice.orientationDidChangeNotification)) { _ in
+            refreshOrientation()
+        }
         .task {
+            // Ensure orientation-change notifications are actually generated (they are only
+            // posted while generation is enabled). We observe them purely as a trigger to
+            // re-read the authoritative window-scene interface orientation.
+            UIDevice.current.beginGeneratingDeviceOrientationNotifications()
+
             // Spin the camera up once, on first appearance, and keep it for the app's life.
             if session == nil {
                 let s = PoseSession(model: model)
                 session = s
                 await s.start()
             }
+            refreshOrientation()
         }
+        .onDisappear {
+            UIDevice.current.endGeneratingDeviceOrientationNotifications()
+        }
+    }
+
+    /// Resolve the current interface orientation from the active window scene and push
+    /// landscape-ness into the model. Falls back to portrait when no scene is available.
+    private func refreshOrientation() {
+        let scene = UIApplication.shared.connectedScenes
+            .compactMap { $0 as? UIWindowScene }
+            .first { $0.activationState == .foregroundActive }
+            ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        let isLandscape = scene?.interfaceOrientation.isLandscape ?? false
+        model.updateOrientation(isLandscape: isLandscape)
     }
 }

@@ -82,6 +82,38 @@ final class AppModel {
     /// The current UI phase. Views observe changes to route.
     var phase: Phase = .setup
 
+    // MARK: - Framing mode (orientation IS the mode)
+
+    /// The active framing mode the setup + guidance are tuned for. ORIENTATION IS THE MODE:
+    /// portrait (tall frame) → `.fullBody`, landscape (wide frame) → `.upperBody`. Auto-driven
+    /// from the device/interface orientation unless `framingModeOverride` forces one. Views
+    /// observe this to show a subtle "Full-body" / "Upper-body" chip; `PoseSession` reads it
+    /// each frame to pick the required-joint set.
+    private(set) var framingMode: FramingMode = .fullBody
+
+    /// Optional manual override. When non-nil it wins over the orientation-derived mode, so
+    /// we can force a mode later (e.g. a game that always wants upper-body). `nil` (default)
+    /// = auto-from-orientation. Set this and `framingMode` recomputes immediately.
+    var framingModeOverride: FramingMode? = nil {
+        didSet { recomputeFramingMode() }
+    }
+
+    /// The most recent orientation-derived mode (before the override is applied). Updated by
+    /// `updateOrientation(isLandscape:)`; combined with the override in `recomputeFramingMode`.
+    private var orientationMode: FramingMode = .fullBody
+
+    /// Update the orientation-derived framing mode. Called by the UI when the interface
+    /// orientation changes. Landscape → upper-body, portrait (and unknown) → full-body.
+    func updateOrientation(isLandscape: Bool) {
+        orientationMode = isLandscape ? .upperBody : .fullBody
+        recomputeFramingMode()
+    }
+
+    /// Resolve `framingMode` from the override (if any) else the orientation-derived mode.
+    private func recomputeFramingMode() {
+        framingMode = framingModeOverride ?? orientationMode
+    }
+
     // MARK: - Stream to website (relay path)
 
     /// Fixed default room code the browser display should open. Editable in the UI.

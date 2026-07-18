@@ -20,10 +20,15 @@ import SwiftUI
 
 struct GameView: View {
     @Environment(AppModel.self) private var model
+    @Environment(\.verticalSizeClass) private var vSizeClass
     let session: PoseSession
 
     /// URL presented in a share/preview sheet when the user opens their saved clip.
     @State private var shareURL: URL?
+
+    /// Landscape → short window. Used to size the camera inset so it stays visible and its
+    /// aspect roughly matches the (now wide) upright preview instead of a tall portrait box.
+    private var isLandscape: Bool { vSizeClass == .compact }
 
     var body: some View {
         ZStack {
@@ -67,12 +72,15 @@ struct GameView: View {
 
     private var cameraInset: some View {
         ZStack {
-            CameraPreview(session: session.captureSession)
+            CameraPreview(session: session)
             // A faint readiness-tinted border so the player knows tracking is live.
             RoundedRectangle(cornerRadius: 14)
                 .stroke(insetBorderColor.opacity(0.9), lineWidth: 3)
         }
-        .frame(width: 108, height: 192) // ~9:16 portrait thumbnail
+        // Portrait: a tall 9:16 thumbnail. Landscape / upper-body: a wide 16:9 thumbnail so
+        // the (upright, wide) preview isn't letter-boxed and the hands stay readable. Either
+        // way the inset stays corner-anchored and visible.
+        .frame(width: insetSize.width, height: insetSize.height)
         .clipShape(RoundedRectangle(cornerRadius: 14))
         .shadow(radius: 6)
         .overlay(alignment: .bottom) {
@@ -89,6 +97,13 @@ struct GameView: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
+    }
+
+    /// Camera-inset dimensions per orientation: tall in portrait, wide in landscape so the
+    /// upright preview fills it in both. Upper-body mode (landscape) benefits from the wider
+    /// box since hands span horizontally.
+    private var insetSize: CGSize {
+        isLandscape ? CGSize(width: 192, height: 108) : CGSize(width: 108, height: 192)
     }
 
     private var insetBorderColor: Color {

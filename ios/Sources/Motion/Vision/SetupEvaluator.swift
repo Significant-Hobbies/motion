@@ -12,6 +12,25 @@
 
 import Foundation
 
+/// Which part of the body the setup is framing for. ORIENTATION IS THE MODE: portrait (a
+/// tall frame) means full-body; landscape (a wide frame) means upper-body only. The mode
+/// changes which joints are required, the distance heuristics, and the guidance copy.
+enum FramingMode: String, Sendable, Equatable, CaseIterable {
+    /// Portrait / tall frame: expect head-to-feet (games that use legs / squats).
+    case fullBody
+    /// Landscape / wide frame: expect head, arms, hands only (desk / hand-focused). Making
+    /// the hands bigger in a wide frame also improves hand tracking.
+    case upperBody
+
+    /// A short, user-facing label for the mode chip.
+    var label: String {
+        switch self {
+        case .fullBody: return "Full-body"
+        case .upperBody: return "Upper-body"
+        }
+    }
+}
+
 /// The debounced verdict the setup UI renders.
 struct SetupVerdict: Sendable, Equatable {
     let tracking: TrackingState
@@ -25,8 +44,22 @@ final class SetupEvaluator {
     /// How long tracking must stay good before we call the setup "ready".
     var readyHold: TimeInterval = 1.5
 
-    /// Joints that must be present for gameplay to be meaningful.
-    private let required: [JointName] = [.head, .torso, .leftFoot, .rightFoot]
+    /// The active framing mode. Drives the required-joint set + guidance + distance checks.
+    /// Set from the device orientation (see `AppModel`). Defaults to full-body (portrait).
+    var mode: FramingMode = .fullBody
+
+    /// Joints that must be present for gameplay to be meaningful, per mode.
+    ///   • fullBody: head, torso, both knees, both feet (a whole standing body).
+    ///   • upperBody: head, torso, and BOTH hands — NO knees/feet (desk / hand-focused).
+    ///     Shoulders/elbows are nice-to-have (they live in the optional arm chain, not here).
+    private func requiredJoints(for mode: FramingMode) -> [JointName] {
+        switch mode {
+        case .fullBody:
+            return [.head, .torso, .leftKnee, .rightKnee, .leftFoot, .rightFoot]
+        case .upperBody:
+            return [.head, .torso, .leftHand, .rightHand]
+        }
+    }
 
     /// When continuous-good tracking started; nil while not good.
     private var goodSince: TimeInterval?
@@ -41,8 +74,15 @@ final class SetupEvaluator {
             return verdict(.lowLight, "Too dark — turn on more light.")
         }
 
-        // Whole body check: need head, torso, and both feet.
-        let missing = required.filter { !present.contains($0) }
+        switch mode {
+        case .fullBody: return evaluateFullBody(present: present, frame: frame)
+        case .upperBody: return evaluateUpperBody(present: present, frame: frame)
+        }
+    }
+
+    /// Portrait / tall frame: require the whole standing body (head, torso, knees, feet).
+    private func evaluateFullBody(present: Set<JointName>, frame: PoseFrame) -> SetupVerdict {
+        let missing = requiredJoints(for: .fullBody).filter { !present.contains($0) }
         if missing.contains(.head), missing.contains(.torso) {
             return verdict(.lost, "Step into the frame so the camera can see you.")
         }
@@ -54,7 +94,7 @@ final class SetupEvaluator {
             return verdict(.raisePhone, "Tilt the phone up — your head is out of frame.")
         }
         if !missing.isEmpty {
-            return verdict(.partial, "Get your whole body in the frame.")
+            return verdict(.partial, "Step back so your whole body fits.")
         }
 
         // Distance from head→feet span in frame. Too tall a span = too close;
@@ -72,7 +112,41 @@ final class SetupEvaluator {
             }
         }
 
-        // Everything good.
+        return verdict(.ok, "Looking good — hold still.")
+    }
+
+    /// Landscape / wide frame: require head, torso, and BOTH hands. Legs are deliberately
+    /// NOT required — this mode is for desk / hand-focused play, so readiness must go green
+    /// with no knees/feet in frame at all.
+    private func evaluateUpperBody(present: Set<JointName>, frame: PoseFrame) -> SetupVerdict {
+        let missing = requiredJoints(for: .upperBody).filter { !present.contains($0) }
+        if missing.contains(.head), missing.contains(.torso) {
+            return verdict(.lost, "Step into the frame so the camera can see you.")
+        }
+        if missing.contains(.head) {
+            return verdict(.raisePhone, "Tilt the phone so your head is in frame.")
+        }
+        if missing.contains(.leftHand) || missing.contains(.rightHand) {
+            return verdict(.partial, "Frame your head, arms, and hands.")
+        }
+        if !missing.isEmpty {
+            return verdict(.partial, "Frame your head, arms, and hands.")
+        }
+
+        // Distance: use the head→hands vertical reach as a rough "am I close enough" gauge.
+        // Too small a reach means the player is far away and the hands will be tiny; too
+        // large means they're cropping themselves. These are loose — the point of this mode
+        // is bigger hands, so we err toward "come closer".
+        if let head = frame.joints[.head] {
+            let hy = [frame.joints[.leftHand]?[1], frame.joints[.rightHand]?[1]].compactMap { $0 }
+            if let lowestHand = hy.max() {
+                let reach = abs(lowestHand - head[1])
+                if reach < 0.12 {
+                    return verdict(.tooFar, "Come closer so your hands fill the frame.")
+                }
+            }
+        }
+
         return verdict(.ok, "Looking good — hold still.")
     }
 

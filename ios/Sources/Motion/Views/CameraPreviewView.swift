@@ -20,12 +20,18 @@ import SwiftUI
 // MARK: - Camera preview layer
 
 struct CameraPreview: UIViewRepresentable {
-    let session: AVCaptureSession
+    /// The pose session owns the camera. We take it (not just the raw `AVCaptureSession`)
+    /// so we can hand the created preview layer back to the CameraController, which keeps
+    /// the layer's connection horizon-level via its RotationCoordinator (upright preview in
+    /// every device orientation).
+    let session: PoseSession
 
     func makeUIView(context: Context) -> PreviewUIView {
         let view = PreviewUIView()
-        view.videoPreviewLayer.session = session
+        view.videoPreviewLayer.session = session.captureSession
         view.videoPreviewLayer.videoGravity = .resizeAspectFill
+        // Register the layer so the camera controller can drive its rotation angle.
+        session.attachPreviewLayer(view.videoPreviewLayer)
         return view
     }
 

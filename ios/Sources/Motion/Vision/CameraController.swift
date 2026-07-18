@@ -68,6 +68,24 @@ final class CameraController: NSObject, @unchecked Sendable {
 
     private var isConfigured = false
 
+    // MARK: - Orientation (iOS 17+ RotationCoordinator)
+
+    /// Drives horizon-level rotation angles for BOTH the video-data-output connection
+    /// (what Vision sees) and the preview layer (what the player sees), so the frame is
+    /// display-upright in EVERY device orientation — a tall frame in portrait, a wide
+    /// frame in landscape, but always upright. This is what lets the PoseEstimator's
+    /// mapping (mirror x, `y = 1 - y`) stay correct in both orientations: it only ever
+    /// needs the buffer to be display-upright, and this coordinator guarantees that.
+    private var rotationCoordinator: AVCaptureDevice.RotationCoordinator?
+
+    /// The preview layer whose connection we keep horizon-level. Set by the preview view
+    /// via `attachPreviewLayer(_:)` once it exists. Weak: the view owns it.
+    private weak var previewLayer: AVCaptureVideoPreviewLayer?
+
+    /// KVO observers on the coordinator's angle properties. Retained for their lifetime.
+    private var captureAngleObservation: NSKeyValueObservation?
+    private var previewAngleObservation: NSKeyValueObservation?
+
     // MARK: - Permission
 
     /// Request camera authorization. Returns true if granted.
@@ -122,6 +140,7 @@ final class CameraController: NSObject, @unchecked Sendable {
             return
         }
         session.addInput(input)
+        let captureDevice = device
 
         // BGRA output — the format Vision and Core Image handle directly.
         videoOutput.videoSettings = [
@@ -137,21 +156,91 @@ final class CameraController: NSObject, @unchecked Sendable {
         }
         session.addOutput(videoOutput)
 
-        // Lock the connection to portrait-up video orientation and mirror the FRONT
-        // camera so the preview reads like a mirror. NOTE: mirroring the connection
-        // flips the *preview*; the pixel buffer we hand Vision is also mirrored, which
-        // is exactly what we want since our joint mapping mirror-corrects to match.
-        if let connection = videoOutput.connection(with: .video) {
-            if connection.isVideoRotationAngleSupported(90) {
-                connection.videoRotationAngle = 90 // portrait
-            }
-            if connection.isVideoMirroringSupported {
-                connection.automaticallyAdjustsVideoMirroring = false
-                connection.isVideoMirrored = true
-            }
+        // Mirror the FRONT camera so the preview (and the buffer Vision sees) reads like a
+        // mirror. Mirroring the connection flips both the preview AND the pixel buffer we
+        // hand Vision, which is exactly what we want since our joint mapping mirror-corrects
+        // to match. We keep mirroring FIXED (front camera, always); only the *rotation* is
+        // made orientation-aware below via the RotationCoordinator.
+        if let connection = videoOutput.connection(with: .video),
+           connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = true
         }
 
         session.commitConfiguration()
+
+        // Orientation-aware rotation. The coordinator publishes horizon-level angles that
+        // change as the device rotates; we push them onto the capture + preview connections
+        // via KVO so the buffer handed to Vision is ALWAYS display-upright (tall in portrait,
+        // wide in landscape). See `installRotationCoordinator`.
+        installRotationCoordinator(for: captureDevice)
+    }
+
+    // MARK: - Orientation wiring
+
+    /// Attach the live preview layer so its connection can be kept horizon-level. Called by
+    /// the preview view once its `AVCaptureVideoPreviewLayer` exists. Applies the current
+    /// angle immediately and future angles arrive via KVO.
+    func attachPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            self.previewLayer = layer
+            if let angle = self.rotationCoordinator?.videoRotationAngleForHorizonLevelPreview {
+                self.applyPreviewAngle(angle)
+            }
+        }
+    }
+
+    /// Build the `RotationCoordinator` for the front camera and start observing both of its
+    /// horizon-level angle properties. `videoRotationAngleForHorizonLevelCapture` drives the
+    /// video-data-output connection (the buffer Vision sees); `...ForHorizonLevelPreview`
+    /// drives the preview layer. KVO keeps both current as the device rotates — no manual
+    /// UIDevice orientation math, and it stays correct even when the UI is orientation-locked.
+    private func installRotationCoordinator(for device: AVCaptureDevice) {
+        let coordinator = AVCaptureDevice.RotationCoordinator(
+            device: device,
+            previewLayer: previewLayer
+        )
+        rotationCoordinator = coordinator
+
+        // Apply the initial angles synchronously so the very first frames are already upright.
+        applyCaptureAngle(coordinator.videoRotationAngleForHorizonLevelCapture)
+        applyPreviewAngle(coordinator.videoRotationAngleForHorizonLevelPreview)
+
+        captureAngleObservation = coordinator.observe(
+            \.videoRotationAngleForHorizonLevelCapture,
+            options: [.new]
+        ) { [weak self] _, change in
+            guard let self, let angle = change.newValue else { return }
+            self.sessionQueue.async { self.applyCaptureAngle(angle) }
+        }
+
+        previewAngleObservation = coordinator.observe(
+            \.videoRotationAngleForHorizonLevelPreview,
+            options: [.new]
+        ) { [weak self] _, change in
+            guard let self, let angle = change.newValue else { return }
+            self.sessionQueue.async { self.applyPreviewAngle(angle) }
+        }
+    }
+
+    /// Push a horizon-level angle onto the video-data-output connection. This rotates the
+    /// delivered `CVPixelBuffer` so it is display-upright for the current device orientation,
+    /// which is the invariant PoseEstimator's coordinate mapping depends on.
+    private func applyCaptureAngle(_ angle: CGFloat) {
+        guard let connection = videoOutput.connection(with: .video),
+              connection.isVideoRotationAngleSupported(angle) else { return }
+        connection.videoRotationAngle = angle
+    }
+
+    /// Push a horizon-level angle onto the preview layer's connection so the on-screen
+    /// preview stays upright too. Must touch the layer on the main thread.
+    private func applyPreviewAngle(_ angle: CGFloat) {
+        DispatchQueue.main.async { [weak self] in
+            guard let connection = self?.previewLayer?.connection,
+                  connection.isVideoRotationAngleSupported(angle) else { return }
+            connection.videoRotationAngle = angle
+        }
     }
 }
 
@@ -162,8 +251,12 @@ extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
                        didOutput sampleBuffer: CMSampleBuffer,
                        from connection: AVCaptureConnection) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        // The connection is already portrait + mirrored, so Vision should treat the
-        // buffer as upright (.up). See PoseEstimator for how coordinates are handled.
+        // The connection is kept horizon-level by the RotationCoordinator (see
+        // `installRotationCoordinator`) and mirrored, so the delivered buffer is ALWAYS
+        // display-upright for the current device orientation — tall in portrait, wide in
+        // landscape. Vision therefore treats it as `.up` in BOTH orientations, and the
+        // PoseEstimator's top-left/mirror mapping stays correct because it only depends on
+        // the buffer being display-upright. See PoseEstimator for how coordinates are handled.
         consumer?.consume(pixelBuffer: pixelBuffer, orientation: .up)
         // pixelBuffer is not retained past this call — nothing is persisted by Vision.
 

@@ -27,6 +27,12 @@ final class PoseSession {
     /// Exposed so the preview view can attach a preview layer to the live session.
     var captureSession: AVCaptureSession { camera.session }
 
+    /// Attach the live preview layer to the camera controller so its connection is kept
+    /// horizon-level by the RotationCoordinator (preview stays upright in every orientation).
+    func attachPreviewLayer(_ layer: AVCaptureVideoPreviewLayer) {
+        camera.attachPreviewLayer(layer)
+    }
+
     /// True once camera permission is granted and the session is running.
     private(set) var cameraAuthorized = false
     private(set) var running = false
@@ -91,6 +97,10 @@ private final class FrameBridge: CameraFrameConsumer, @unchecked Sendable {
 
 extension PoseSession: PoseEstimatorDelegate {
     func poseEstimator(_ estimator: PoseEstimator, didProduce frame: PoseFrame) {
+        // Keep the evaluator's framing mode in sync with the model's current mode
+        // (orientation-derived, or a manual override). Both are main-actor, so this is a
+        // cheap direct read each frame — no extra observation plumbing.
+        evaluator.mode = model.framingMode
         let verdict = evaluator.evaluate(frame: frame)
         model.ingest(
             joints: Joints(from: frame.joints, arms: frame.armJoints),
