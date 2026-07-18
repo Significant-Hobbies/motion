@@ -26,11 +26,12 @@
 //      horizon-level, this mapping breaks in landscape.
 //    • Vision returns normalized points in [0,1] with origin BOTTOM-LEFT, y up.
 //    • The protocol wants origin TOP-LEFT, y down: so  y' = 1 - y.
-//    • The FRONT camera connection is configured with `isVideoMirrored = true`
-//      (see CameraController), so the pixel buffer Vision sees is ALREADY mirrored
-//      like a mirror. Therefore Vision's x is already in mirror space and we DO NOT
-//      flip x again here. (If you ever disable connection mirroring, flip x here:
-//      x' = 1 - x.)
+//    • The camera connection is configured with `isVideoMirrored = true` for BOTH the
+//      front AND the wide-rear camera (see CameraController — the rear is mirrored in
+//      software precisely so this mapping stays camera-agnostic), so the pixel buffer
+//      Vision sees is ALWAYS mirrored like a mirror regardless of which camera is active.
+//      Therefore Vision's x is already in mirror space and we DO NOT flip x again here.
+//      (If you ever disable connection mirroring, flip x here: x' = 1 - x.)
 //    • Because the buffer is mirrored, Vision's `.leftWrist` visually sits on the
 //      player's RIGHT and vice-versa. We name our protocol joints by the player's
 //      real body side, so we SWAP left/right when mapping (Vision.left → protocol.right).

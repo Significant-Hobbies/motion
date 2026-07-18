@@ -70,6 +70,14 @@ final class PoseSession {
         running = false
     }
 
+    /// Switch the active camera (front ⇄ wide-rear) live. Reconfigures the running session in
+    /// place — no stop/start, so the preview and pose stream don't freeze. Both cameras emit
+    /// the SAME mirror-corrected joints (see `CameraFacing`), so the estimator / evaluator /
+    /// bridge need no changes. Safe if the requested camera is missing (stays on current).
+    func switchCamera(to facing: CameraFacing) {
+        camera.switchCamera(to: facing)
+    }
+
     /// Install or remove the recorder's tap on the live camera's sample buffers. This is
     /// how the on-device `CameraRecorder` receives frames without adding a second capture
     /// output (which would contend with the Vision path). Pass nil to detach.

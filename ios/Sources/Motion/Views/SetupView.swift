@@ -61,6 +61,10 @@ struct SetupView: View {
                     .foregroundStyle(.white)
                     .labelStyle(ChipLabelStyle(dotColor: readinessColor))
                 Spacer()
+                // Camera flip: front (selfie) ⇄ wide-rear (ultra-wide, fits the whole body
+                // from close). Switches the live session in place — no freeze — and both
+                // cameras emit the same mirror-corrected joints, so pose/games are unaffected.
+                cameraFlipButton
                 // Dev-server IP editor (repurposed old "server host" field). Only relevant
                 // when loading the game from the Vite dev server; hidden by default.
                 Button {
@@ -82,6 +86,26 @@ struct SetupView: View {
         }
         .padding(10)
         .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 16))
+    }
+
+    /// A small camera-flip button on the preview chrome. Shows the CURRENT camera and toggles
+    /// to the other on tap: front (selfie, tighter FOV) ⇄ wide-rear (ultra-wide, whole body
+    /// fits from close). Tapping updates `model.cameraFacing` and switches the live session.
+    private var cameraFlipButton: some View {
+        Button {
+            let next: CameraFacing = model.cameraFacing == .front ? .wideRear : .front
+            model.cameraFacing = next
+            session.switchCamera(to: next)
+        } label: {
+            Image(systemName: model.cameraFacing == .front
+                  ? "arrow.triangle.2.circlepath.camera.fill"   // on front → tap to go wide-rear
+                  : "camera.fill")                               // on wide-rear → tap to go front
+                .font(.title3)
+                .foregroundStyle(.white.opacity(0.8))
+        }
+        .accessibilityLabel(model.cameraFacing == .front
+                            ? "Switch to wide rear camera"
+                            : "Switch to front camera")
     }
 
     /// Expanded settings: Mac LAN IP (used for BOTH the game and the relay), the "Stream

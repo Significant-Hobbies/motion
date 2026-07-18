@@ -82,6 +82,16 @@ final class AppModel {
     /// The current UI phase. Views observe changes to route.
     var phase: Phase = .setup
 
+    // MARK: - Camera selection
+
+    /// Which physical camera the pose pipeline captures from. `.front` (default) is the selfie
+    /// camera the user sees themselves in; `.wideRear` is the rear ultra-wide, a much wider FOV
+    /// so the whole body fits from close in a normal room. BOTH are normalized to the same
+    /// mirror-corrected output convention downstream (see `CameraFacing`), so nothing past the
+    /// camera needs to know which is active. Setting this asks `PoseSession` to switch live;
+    /// `PoseSession` observes it (see `SetupView`) — the model stays camera-agnostic otherwise.
+    var cameraFacing: CameraFacing = .front
+
     // MARK: - Framing mode (orientation IS the mode)
 
     /// The active framing mode the setup + guidance are tuned for. ORIENTATION IS THE MODE:
