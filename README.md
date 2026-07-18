@@ -53,25 +53,23 @@ Open `http://localhost:5173/?debug=1`: **mouse = hands, arrow keys = lean, space
 
 ## Run v1 on your iPhone
 
-The phone renders the game; you mirror it to a TV.
+The phone renders the game; you mirror it to a TV. The web game is **bundled into the
+app** (`ios/Resources/webgame`), so no dev server or Mac network is needed to play.
 
-1. Start the game dev server on your Mac (phone + Mac on the same Wi-Fi):
-   ```bash
-   npm --workspace web run dev
-   ```
-2. Generate + open the Xcode project:
+1. Generate + open the Xcode project:
    ```bash
    cd ios && brew install xcodegen && xcodegen generate && open Motion.xcodeproj
    ```
-3. Set your signing team; set the **dev-server IP** in the app to your Mac's LAN IP.
-4. Run on a **physical iPhone** (camera required). Grant camera + Photos permissions.
-5. Stand back so your whole body is in frame, calibrate, play.
-6. **Mirror to a TV**: Control Center → Screen Mirroring → your Apple TV / AirPlay-2
+2. Set your signing team (a free Apple ID works).
+3. Run on a **physical iPhone** (camera required). Grant camera + Photos permissions.
+4. Stand back so your whole body is in frame, calibrate, play.
+5. **Mirror to a TV**: Control Center → Screen Mirroring → your Apple TV / AirPlay-2
    TV / Chromecast (or use QuickTime over USB to view on the Mac).
-7. Tap **Record** to save a screen recording (game + your camera inset) to Photos.
+6. Tap **Record** to save a screen recording (game + your camera inset) to Photos.
 
-For a fully self-contained "pure app" (no dev server), build the web game and bundle
-it — see `ios/README.md`.
+**Iterating on the web game from the phone?** Run `npm --workspace web run dev`, set
+`GameConfig.forceDevServer = true`, point the app's dev-server IP at your Mac, and
+refresh the bundle after changes with `./scripts/sync-webgame.sh`.
 
 ## Status & the main risk
 

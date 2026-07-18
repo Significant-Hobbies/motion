@@ -52,6 +52,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   full-screen `WKWebView` game host fed pose over the JS bridge at ≤30 Hz; ReplayKit
   screen recording (game + camera inset → one video → Photos). On-device only.
 - **`server/`** — PartyKit relay, **parked for v2**; kept typecheck-green.
+- **Self-contained app** — the web build is bundled into the app
+  (`ios/Resources/webgame`, refreshed by `scripts/sync-webgame.sh`); `GameConfig`
+  auto-prefers it, so the app runs on a phone with **no dev server / Mac network**.
+  Verified: `webgame/` ships in the built `.app` and the app launches clean.
 
 ## Todo / Planned / Deferred / Blocked
 
@@ -78,8 +82,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   device-only verify list. The Simulator build already passes.
 - Playtest **control feel** with the keyboard-debug controller and on-device; tune
   smoothing / target size / obstacle speed until a 90s round is fun.
-- Bundle `web/dist` into the app for a self-contained "pure app" (no dev server).
-- Create the personal GitHub repo and push.
+- ~~Bundle `web/dist` into the app for a self-contained "pure app"~~ — done.
+- ~~Create the personal GitHub repo and push~~ — done (github.com/sarthakagrawal927/motion, private).
 
 ### Deferred → v2
 - PartyKit relay + rooms; browser display; **Chromecast Cast-receiver** (low-latency,
