@@ -449,15 +449,16 @@ export class GameHost {
         break;
 
       case "pairing":
-        if (this.body.hasRequiredJoints && this.body.health === "ok") {
-          if (this.skipReadiness) {
-            // Interactive mirror: no mirror-test / readiness ceremony — drop
-            // straight into the live playground the moment input is usable.
-            this.setScreen("game");
-          } else {
-            this.mirrorStableSince = -1;
-            this.setScreen("mirror");
-          }
+        if (this.skipReadiness) {
+          // Interactive mirror (motion-maker): drop into the live playground the
+          // moment ANY fresh pose arrives — do NOT wait for a full-body lock. The
+          // scene is upper-body friendly and handles partial bodies itself.
+          // `no_signal` = we've never received a fresh packet; anything else means
+          // the phone is streaming, so a desk / upper-body pose advances us.
+          if (this.body.health !== "no_signal") this.setScreen("game");
+        } else if (this.body.hasRequiredJoints && this.body.health === "ok") {
+          this.mirrorStableSince = -1;
+          this.setScreen("mirror");
         }
         break;
 

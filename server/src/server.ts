@@ -187,6 +187,7 @@ export default class MotionServer implements Party.Server {
     // Enforce one connection per role. If the slot is already taken by another
     // live connection, reject this one.
     if (this.roleTaken(role, conn.id)) {
+      console.log(`[${this.room.id}] REJECTED ${role} (room_full — a ${role} is already here)`);
       this.sendError(conn, "room_full", `A ${role} is already connected to this room.`);
       conn.close();
       return;
@@ -194,6 +195,7 @@ export default class MotionServer implements Party.Server {
 
     // Tag the connection with its role — this is what marks it "joined".
     conn.setState({ role });
+    console.log(`[${this.room.id}] JOINED ${role}  (conns now: ${[...this.room.getConnections()].length})`);
 
     // Presence bootstrap: tell the NEW joiner which peers are already present so
     // it can render peer status immediately…
