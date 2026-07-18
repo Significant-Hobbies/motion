@@ -24,6 +24,14 @@ export interface BodyController {
   readonly squatAmount: number;
   /** Signed lean of the torso: −1 = full left, +1 = full right. */
   readonly leanAmount: number;
+  /**
+   * Left-hand openness: 0 = closed fist … 1 = fully open palm. Smoothed like the
+   * joints. Defaults to 1 (open) when the source has no hand data, so nothing
+   * falsely grabs. Matches `joints.leftHand`.
+   */
+  readonly leftHandOpen: number;
+  /** Right-hand openness (0 closed … 1 open). Matches `joints.rightHand`. */
+  readonly rightHandOpen: number;
   /** 0..1 aggregate confidence, blended with staleness. */
   readonly trackingQuality: number;
   /** Health classification the readiness gate + game pause read. */
@@ -86,6 +94,9 @@ export abstract class PoseControllerBase implements BodyController {
   joints: Joints = neutralJoints();
   squatAmount = 0;
   leanAmount = 0;
+  // Default open (1) so nothing grabs before real hand data arrives.
+  leftHandOpen = 1;
+  rightHandOpen = 1;
   trackingQuality = 0;
   health: TrackingHealth = "no_signal";
   hasRequiredJoints = false;
@@ -112,6 +123,13 @@ export abstract class PoseControllerBase implements BodyController {
       next[name] = lerpPoint(this.joints[name], p.joints[name], SMOOTH_ALPHA);
     }
     this.joints = next;
+
+    // Smooth hand openness. Absent `hands` → treat as fully open (1) so a packet
+    // without hand data can never trigger a grab.
+    const targetLeft = p.hands ? clamp01(p.hands.left) : 1;
+    const targetRight = p.hands ? clamp01(p.hands.right) : 1;
+    this.leftHandOpen += (targetLeft - this.leftHandOpen) * SMOOTH_ALPHA;
+    this.rightHandOpen += (targetRight - this.rightHandOpen) * SMOOTH_ALPHA;
 
     this.captureCalibration();
     this.deriveGestures();

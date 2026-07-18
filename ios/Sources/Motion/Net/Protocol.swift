@@ -106,6 +106,16 @@ struct Joints: Codable, Sendable {
     }
 }
 
+// MARK: - Hand state
+
+/// Per-hand openness from Vision hand-pose detection. Mirrors the TS `HandState`.
+/// `0` = closed fist … `1` = fully open palm. `left`/`right` are the PLAYER's own
+/// hands, already mirror-corrected so they line up with `joints.leftHand`/`rightHand`.
+struct HandState: Codable, Sendable {
+    let left: Double
+    let right: Double
+}
+
 // MARK: - Outbound messages (controller → server)
 
 /// ~20/s pose packet. `sentAt` is our monotonic clock (ms) for latency math.
@@ -116,14 +126,19 @@ struct PosePacket: Codable, Sendable {
     let sentAt: Double
     let quality: Double
     let joints: Joints
+    /// Optional hand open/close (added v1.1, backward-compatible). `nil` = unknown, and
+    /// because it is optional it is OMITTED from the JSON entirely when absent — matching
+    /// the TS optional field `hands?: HandState` so old/new relays both accept the packet.
+    let hands: HandState?
 
-    init(seq: Int, sentAt: Double, quality: Double, joints: Joints) {
+    init(seq: Int, sentAt: Double, quality: Double, joints: Joints, hands: HandState? = nil) {
         self.v = PROTOCOL_VERSION
         self.type = "pose"
         self.seq = seq
         self.sentAt = sentAt
         self.quality = quality
         self.joints = joints
+        self.hands = hands
     }
 }
 

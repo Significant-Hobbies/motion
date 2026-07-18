@@ -89,6 +89,13 @@ export interface SessionOptions {
    * off. See `sdk/bridge.ts`.
    */
   transport?: "socket" | "bridge";
+  /**
+   * Skip the mirror + readiness-gate ceremony and drop straight into the game as
+   * soon as usable input is present (socket mode). Used by the interactive
+   * "motion maker" mirror, which is a live playground rather than a timed round.
+   * In debug mode the game starts immediately (mouse movement supplies input).
+   */
+  skipReadiness?: boolean;
 }
 
 export interface CreateSessionArgs {
@@ -143,6 +150,7 @@ export class GameHost {
   private options: SessionOptions;
 
   private readonly transport: "socket" | "bridge";
+  private readonly skipReadiness: boolean;
   private poseController: PoseController;
   private body: BodyController;
   private debugMode: boolean;
@@ -188,6 +196,7 @@ export class GameHost {
     this.debugMode = !!args.options.debug;
     this.recordOn = !!args.options.record;
     this.transport = args.options.transport ?? "socket";
+    this.skipReadiness = !!args.options.skipReadiness;
 
     this.surf = new CanvasSurface(this.canvasEl);
     this.renderer = new CanvasRenderer(this.surf);
@@ -441,8 +450,14 @@ export class GameHost {
 
       case "pairing":
         if (this.body.hasRequiredJoints && this.body.health === "ok") {
-          this.mirrorStableSince = -1;
-          this.setScreen("mirror");
+          if (this.skipReadiness) {
+            // Interactive mirror: no mirror-test / readiness ceremony — drop
+            // straight into the live playground the moment input is usable.
+            this.setScreen("game");
+          } else {
+            this.mirrorStableSince = -1;
+            this.setScreen("mirror");
+          }
         }
         break;
 

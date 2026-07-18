@@ -10,9 +10,17 @@
 // A new game is a drop-in: swap the `game:` argument. The app uses ONLY
 // `../sdk` + `../games/*`.
 
-import { PARTY_HOST, DEBUG, RECORD, FORCED_ROOM, TRANSPORT } from "../config";
-import { createSession } from "../sdk";
+import {
+  PARTY_HOST,
+  DEBUG,
+  RECORD,
+  FORCED_ROOM,
+  TRANSPORT,
+  MOTION_MAKER,
+} from "../config";
+import { createSession, type Game } from "../sdk";
 import { ReachDodge } from "../games/reach-dodge";
+import { MotionMaker } from "../games/motion-maker";
 import { Overlay } from "./overlay";
 
 const canvasEl = document.getElementById("game-canvas") as HTMLCanvasElement;
@@ -20,8 +28,12 @@ const overlayEl = document.getElementById("overlay") as HTMLElement;
 
 const overlay = new Overlay(overlayEl);
 
+// `?room=MOTION` (or `?game=motion-maker`) runs the interactive Motion Maker
+// playground as a live mirror; everything else keeps the classic Reach & Dodge.
+const game: Game = MOTION_MAKER ? new MotionMaker() : new ReachDodge();
+
 const session = createSession({
-  game: new ReachDodge(),
+  game,
   mount: { canvas: canvasEl, overlay: overlayEl },
   screens: overlay,
   options: {
@@ -30,6 +42,8 @@ const session = createSession({
     debug: DEBUG,
     record: RECORD,
     transport: TRANSPORT,
+    // Motion Maker is a live interactive mirror — skip the readiness ceremony.
+    skipReadiness: MOTION_MAKER,
   },
 });
 

@@ -97,7 +97,8 @@ extension PoseSession: PoseEstimatorDelegate {
             quality: frame.quality,
             tracking: verdict.tracking,
             guidance: verdict.guidance,
-            ready: verdict.ready
+            ready: verdict.ready,
+            hands: frame.hands
         )
     }
 
@@ -108,7 +109,8 @@ extension PoseSession: PoseEstimatorDelegate {
             quality: 0,
             tracking: verdict.tracking,
             guidance: verdict.guidance,
-            ready: verdict.ready
+            ready: verdict.ready,
+            hands: nil
         )
     }
 }

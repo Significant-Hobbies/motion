@@ -23,7 +23,8 @@ src/
     game.ts         # Game interface + CanvasRenderer
     types.ts        # shared SDK types
   games/
-    reach-dodge/index.ts   # a Game implementation
+    reach-dodge/index.ts    # a Game implementation (timed round)
+    motion-maker/index.ts   # interactive live-mirror playground (grab/toss objects)
   app/
     main.ts         # host: config + game selection + mount
     overlay.ts      # HTML screens (SessionScreenRenderer)
@@ -58,13 +59,41 @@ so the whole game is playable and testable with no iPhone.
 
 **Debug controls**
 
-- **Mouse** — moves both hands (used to hit left/right targets).
+- **Mouse** — moves both hands (used to hit left/right targets, or reach objects
+  in the motion maker).
+- **Left mouse / Space** — close both hands (grab, for the motion maker).
 - **← / A** — lean left, **→ / D** — lean right (dodge LEAN obstacles).
-- **↓ / S / Space** — squat (dodge DUCK obstacles).
+- **↓ / S** — squat (dodge DUCK obstacles).
 - Move the mouse once to pass the readiness gate.
 
 The diagnostics overlay (RTT, pose rate, seq, latency, tracking quality) shows
 whenever the page is opened with `?debug=1`.
+
+## Motion maker (interactive mirror)
+
+An interactive body-controlled **playground**: the browser is a live mirror that
+draws your pose as a clean avatar, plus floating objects you reach for with your
+hands. **Close a hand near an object to grab it**, move it, and **open the hand
+to release** (tossing it with your hand's recent velocity). Drop objects into the
+target bin to score. It's upper-body only — head / torso / hands, no legs or
+squat — so it works seated at a desk.
+
+- **With a phone**: open `http://localhost:5173/?room=MOTION`. This forces room
+  `MOTION` on the socket relay, shows the pairing code, and — as soon as the
+  phone connects — drops **straight into the playground** (no mirror-test /
+  readiness ceremony; it's a live mirror, not a timed round). Hand open/close
+  comes from the phone's Vision hand-pose (`PosePacket.hands`, 0 = fist … 1 =
+  open palm), smoothed like the joints; absent hand data defaults to open so
+  nothing falsely grabs.
+- **Without a phone**: open `http://localhost:5173/?room=MOTION&debug=1` (or
+  `?game=motion-maker&debug=1`). The **mouse is a hand**; **hold left mouse or
+  Space to close the hand** (grab), release to open (drop). Move the mouse once
+  to begin.
+- **Grab/release thresholds**: a hand counts as *closed* when openness `< 0.4`
+  and grabs the nearest free object within reach on the open→closed edge; a held
+  object *releases* when the hand opens past `0.6`. One object per hand.
+
+`?game=motion-maker` also selects it without forcing a specific room.
 
 ## Recording (opt-in)
 

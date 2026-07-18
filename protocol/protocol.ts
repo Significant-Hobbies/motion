@@ -51,6 +51,17 @@ export type TrackingState =
 
 // ── Controller → server → display ───────────────────────────────────────────
 
+/**
+ * Per-hand openness, from Vision hand-pose detection on the phone.
+ * 0 = closed fist … 1 = fully open palm. Used for grab/release interaction.
+ * `left`/`right` are the player's own hands (already mirror-corrected, matching
+ * `joints.leftHand`/`rightHand`).
+ */
+export interface HandState {
+  left: number;
+  right: number;
+}
+
 /** ~20/s. `sentAt` is the controller's monotonic clock (ms) for latency math. */
 export interface PosePacket {
   v: 1;
@@ -59,6 +70,8 @@ export interface PosePacket {
   sentAt: number;
   quality: number; // 0..1 aggregate confidence
   joints: Joints;
+  /** Optional hand open/close (added v1.1, backward-compatible). Absent = unknown. */
+  hands?: HandState;
 }
 
 /** Controller setup/tracking status, driving the display's readiness UI. */

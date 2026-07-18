@@ -69,9 +69,38 @@ final class AppModel {
     var joints: Joints?
     /// Aggregate confidence 0..1 of the latest frame.
     var quality: Double = 0
+    /// Latest per-hand openness 0..1 (0 = fist, 1 = open palm), for the outgoing packet and
+    /// an optional on-screen debug readout. `nil` until hands are first detected.
+    var hands: HandState?
 
     /// The current UI phase. Views observe changes to route.
     var phase: Phase = .setup
+
+    // MARK: - Stream to website (relay path)
+
+    /// Fixed default room code the browser display should open. Editable in the UI.
+    /// Uppercased on use; the relay room id IS this code.
+    var roomCode: String = "MOTION"
+
+    /// When on, every evaluated pose (with hands) is also streamed to the relay so a
+    /// browser at `ws://<devServerIP>:1999/parties/main/<roomCode>` can render it live.
+    /// Toggling this creates / tears down `roomSocket`. Independent of the local game.
+    var streamToWebsite: Bool = false {
+        didSet {
+            guard streamToWebsite != oldValue else { return }
+            if streamToWebsite { startStreaming() } else { stopStreaming() }
+        }
+    }
+
+    /// Socket lifecycle state for the streaming UI (connecting / streaming / …).
+    private(set) var streamConnection: ConnectionState = .idle
+    /// True once the browser `display` peer has joined the room (from a `peer` message).
+    private(set) var peerConnected: Bool = false
+
+    /// Live relay socket while `streamToWebsite` is on; nil otherwise.
+    private var roomSocket: RoomSocket?
+    /// Monotonic-ish sequence for streamed packets (separate from the bridge's).
+    private var streamSeq = 0
 
     // MARK: - Recording + bridge (v1)
 
@@ -102,17 +131,37 @@ final class AppModel {
     ///   - guidance: matching human guidance string
     ///   - ready: whether setup has been good long enough
     func ingest(joints: Joints?, quality: Double, tracking: TrackingState,
-                guidance: String, ready: Bool) {
+                guidance: String, ready: Bool, hands: HandState?) {
         self.joints = joints
         self.quality = quality
         self.tracking = tracking
         self.guidance = guidance
         self.readyToCalibrate = ready
+        // Hold the last known hands so a body-only frame doesn't blank the readout; the
+        // packet still only carries hands when we have a value.
+        if let hands { self.hands = hands }
 
-        // While playing, forward pose + tracking into the web game in-process. PoseBridge
-        // handles change-detection for tracking and the ~30 Hz throttle for pose.
+        // While playing, forward pose + tracking (with hands) into the web game in-process.
+        // PoseBridge handles change-detection for tracking and the ~30 Hz pose throttle.
         if phase == .game {
-            bridge.pushLivePose(joints: joints, quality: quality, tracking: tracking)
+            bridge.pushLivePose(joints: joints, quality: quality, tracking: tracking,
+                                hands: self.hands)
+        }
+
+        // Stream to the browser relay IN ADDITION to (and independent of) the local game.
+        // Runs straight from setup — no calibration/webview required. Only send usable
+        // frames (tracking ok + joints present); tracking transitions are cheap so we let
+        // the display infer loss from the packet gap.
+        if streamToWebsite, let socket = roomSocket, tracking == .ok, let joints {
+            streamSeq += 1
+            let packet = PosePacket(
+                seq: streamSeq,
+                sentAt: ProcessInfo.processInfo.systemUptime * 1000.0,
+                quality: quality,
+                joints: joints,
+                hands: self.hands
+            )
+            socket.send(packet)
         }
     }
 
@@ -144,5 +193,55 @@ final class AppModel {
         bridge.detach()
         phase = .setup
         readyToCalibrate = false
+    }
+
+    // MARK: - Streaming lifecycle
+
+    /// Open a relay socket to `ws://<devServerIP>:1999/parties/main/<roomCode>` and begin
+    /// streaming poses (see `ingest`). The relay is on the SAME Mac as the dev server, so we
+    /// reuse `devServerIP` as the host. Idempotent-ish: replaces any existing socket.
+    private func startStreaming() {
+        stopStreaming()                     // clear any stale socket first
+        let code = roomCode.trimmingCharacters(in: .whitespaces).uppercased()
+        guard !code.isEmpty else {
+            streamToWebsite = false
+            streamConnection = .failed(reason: "Enter a room code.")
+            return
+        }
+        streamSeq = 0
+        peerConnected = false
+        let socket = RoomSocket(host: devServerIP, code: code)
+        socket.delegate = self
+        roomSocket = socket
+        socket.connect()
+    }
+
+    /// Tear down the relay socket and reset streaming UI state. Safe to call when idle.
+    private func stopStreaming() {
+        roomSocket?.disconnect()
+        roomSocket = nil
+        peerConnected = false
+        streamConnection = .idle
+    }
+}
+
+// MARK: - RoomSocketDelegate (streaming status → UI)
+
+extension AppModel: RoomSocketDelegate {
+    func roomSocket(_ socket: RoomSocket, didChangeState state: ConnectionState) {
+        streamConnection = state
+        // Disarm on a hard disconnect so the UI toggle reflects reality.
+        if case .idle = state { peerConnected = false }
+    }
+
+    func roomSocket(_ socket: RoomSocket, didReceive message: IncomingMessage) {
+        // Track the browser display's presence so the UI can show "peer connected".
+        if case .peer(let peer) = message, peer.role == .display {
+            peerConnected = peer.connected
+        }
+    }
+
+    func roomSocket(_ socket: RoomSocket, didMeasureRTT rttMS: Double) {
+        // RTT is not surfaced in the streaming UI yet; ignore.
     }
 }

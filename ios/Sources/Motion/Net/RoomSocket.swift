@@ -1,4 +1,3 @@
-// PARKED for v2 (browser/relay path) — not used in v1.
 //
 //  RoomSocket.swift
 //  Motion

@@ -34,6 +34,10 @@ struct PoseFrame: Sendable {
     let quality: Double
     /// Per-joint confidence (post-threshold) for the setup evaluator / overlay dimming.
     let confidences: [JointName: Double]
+    /// Per-hand openness 0..1 (0 = fist, 1 = open palm), computed from the SAME frame's
+    /// hand-pose observations and assigned to the player's left/right. `nil` = not computed
+    /// this frame (e.g. no hands detected and none ever seen); the packet then omits `hands`.
+    let hands: HandState?
 }
 
 /// Receives estimated frames on the main actor.
@@ -60,6 +64,14 @@ final class PoseEstimator: @unchecked Sendable {
     /// Reused request. Vision requests are cheap to reuse and hold no per-frame state.
     private let request: VNDetectHumanBodyPoseRequest
 
+    /// Reused hand-pose request, run on the SAME handler as the body request each frame so
+    /// there's one Vision pass over one camera output. Up to two hands.
+    private let handRequest: VNDetectHumanHandPoseRequest
+
+    /// Turns this frame's hand observations into a per-hand openness `HandState`, using the
+    /// body wrists (below) to assign hands to the player's left/right.
+    private let handEstimator = HandPoseEstimator()
+
     /// Serial queue so smoothing state (`smoothed`) is only touched from one thread.
     private let workQueue = DispatchQueue(label: "com.motion.pose")
     /// Previous smoothed joints, for the exponential filter.
@@ -67,6 +79,8 @@ final class PoseEstimator: @unchecked Sendable {
 
     init() {
         request = VNDetectHumanBodyPoseRequest()
+        handRequest = VNDetectHumanHandPoseRequest()
+        handRequest.maximumHandCount = 2
     }
 
     /// Run detection on a frame. Call from the camera queue; work is dispatched internally.
@@ -82,7 +96,10 @@ final class PoseEstimator: @unchecked Sendable {
                                                 orientation: orientation,
                                                 options: [:])
             do {
-                try handler.perform([self.request])
+                // Perform BOTH requests in one handler call: one Vision pass over the frame
+                // for body pose + hand pose. Cheaper than two handlers, and both read the
+                // same pixels so their coordinate spaces line up.
+                try handler.perform([self.request, self.handRequest])
             } catch {
                 self.emitLost()
                 return
@@ -97,7 +114,8 @@ final class PoseEstimator: @unchecked Sendable {
             }
 
             self.lastEmit = now
-            self.buildAndEmit(from: points)
+            let handObservations = self.handRequest.results ?? []
+            self.buildAndEmit(from: points, handObservations: handObservations)
         }
     }
 
@@ -105,7 +123,8 @@ final class PoseEstimator: @unchecked Sendable {
 
     /// Map Vision's recognized points to the 8 protocol joints, applying coordinate
     /// flip, left/right swap, smoothing, and confidence thresholding.
-    private func buildAndEmit(from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint]) {
+    private func buildAndEmit(from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint],
+                              handObservations: [VNHumanHandPoseObservation]) {
         // Pull a Vision point if it clears the confidence threshold, converting to
         // top-left origin. x is kept as-is (buffer already mirrored); y is flipped.
         func pt(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
@@ -177,13 +196,25 @@ final class PoseEstimator: @unchecked Sendable {
         let quality = confidences.values.isEmpty ? 0
             : confidences.values.reduce(0, +) / Double(JointName.allCases.count)
 
-        let frame = PoseFrame(joints: outJoints, quality: quality, confidences: confidences)
+        // Hand open/close from the SAME frame. Assign detected hands to the player's
+        // left/right by nearest body wrist (the swapped, mirror-corrected joints above),
+        // so `HandState.left`/`.right` line up with `joints.leftHand`/`rightHand`. Only
+        // produce a `HandState` when hands are actually present, so a body-only frame omits
+        // the optional field rather than fabricating a value.
+        let hands: HandState? = handObservations.isEmpty ? nil
+            : handEstimator.handState(from: handObservations,
+                                      leftBodyHand: outJoints[.leftHand],
+                                      rightBodyHand: outJoints[.rightHand])
+
+        let frame = PoseFrame(joints: outJoints, quality: quality,
+                              confidences: confidences, hands: hands)
         Task { @MainActor in self.delegate?.poseEstimator(self, didProduce: frame) }
     }
 
     private func emitLost() {
         // Decay smoothing state so a fresh detection doesn't lerp from a stale pose.
         smoothed.removeAll()
+        handEstimator.reset()
         Task { @MainActor in self.delegate?.poseEstimatorDidLoseTracking(self) }
     }
 }

@@ -5,8 +5,9 @@
 //
 // Controls:
 //   Mouse X/Y        → both hands track the cursor (mirrored L/R around cursor)
+//   Left mouse button / Space      → close both hands (grab); release to open
 //   Left / Right arrow (or A / D) → lean torso left / right (hold)
-//   Down arrow / S / Space         → squat (hold)
+//   Down arrow / S                 → squat (hold)
 //   Up arrow / W                   → stand tall (release squat quickly)
 //
 // The controller reports health "ok" as soon as the mouse has moved once, so
@@ -36,6 +37,8 @@ export class KeyboardDebugController implements BodyController {
   };
   squatAmount = 0;
   leanAmount = 0;
+  leftHandOpen = 1;
+  rightHandOpen = 1;
   trackingQuality = 1;
   health: TrackingHealth = "no_signal";
   hasRequiredJoints = false;
@@ -46,15 +49,33 @@ export class KeyboardDebugController implements BodyController {
   private moved = false;
   private leanKey = 0; // −1 / 0 / +1 target
   private squatKey = false;
+  private grabKey = false; // left mouse or space held → hands close
+  private mouseDown = false;
   private lastTick = -1;
   private held = new Set<string>();
 
   constructor(private target: HTMLElement) {
     this.target.addEventListener("mousemove", this.onMouse);
     this.target.addEventListener("touchmove", this.onTouch, { passive: true });
+    this.target.addEventListener("mousedown", this.onMouseDown);
+    window.addEventListener("mouseup", this.onMouseUp);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
   }
+
+  private onMouseDown = (e: MouseEvent): void => {
+    if (e.button === 0) {
+      this.mouseDown = true;
+      this.recomputeKeys();
+    }
+  };
+
+  private onMouseUp = (e: MouseEvent): void => {
+    if (e.button === 0) {
+      this.mouseDown = false;
+      this.recomputeKeys();
+    }
+  };
 
   private onMouse = (e: MouseEvent): void => {
     const r = this.target.getBoundingClientRect();
@@ -87,8 +108,10 @@ export class KeyboardDebugController implements BodyController {
     const left = h.has("arrowleft") || h.has("a");
     const right = h.has("arrowright") || h.has("d");
     this.leanKey = left && !right ? -1 : right && !left ? 1 : 0;
-    this.squatKey =
-      h.has("arrowdown") || h.has("s") || h.has(" ") || h.has("spacebar");
+    this.squatKey = h.has("arrowdown") || h.has("s");
+    // Left mouse OR space closes both hands (grab). Space no longer squats so the
+    // two gestures never collide when testing the motion maker.
+    this.grabKey = this.mouseDown || h.has(" ") || h.has("spacebar");
   }
 
   tick(nowMs: number): void {
@@ -101,6 +124,12 @@ export class KeyboardDebugController implements BodyController {
     this.leanAmount += (leanTarget - this.leanAmount) * Math.min(1, KEY_RAMP * dt);
     const squatTarget = this.squatKey ? 1 : 0;
     this.squatAmount += (squatTarget - this.squatAmount) * Math.min(1, KEY_RAMP * dt);
+
+    // Hands: grab key closes both toward 0 (fist), otherwise open toward 1 (palm).
+    const openTarget = this.grabKey ? 0 : 1;
+    const openStep = Math.min(1, KEY_RAMP * dt);
+    this.leftHandOpen += (openTarget - this.leftHandOpen) * openStep;
+    this.rightHandOpen += (openTarget - this.rightHandOpen) * openStep;
 
     // Hands mirror around the cursor; a little apart so both are usable.
     const lhTarget: [number, number] = [clamp01(this.mouseX - 0.12), this.mouseY];
@@ -134,6 +163,8 @@ export class KeyboardDebugController implements BodyController {
   dispose(): void {
     this.target.removeEventListener("mousemove", this.onMouse);
     this.target.removeEventListener("touchmove", this.onTouch);
+    this.target.removeEventListener("mousedown", this.onMouseDown);
+    window.removeEventListener("mouseup", this.onMouseUp);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
   }

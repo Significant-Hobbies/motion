@@ -37,3 +37,15 @@ export const FORCED_ROOM: string | null = (() => {
   const r = params.get("room");
   return r ? r.toUpperCase() : null;
 })();
+
+/**
+ * The interactive "motion maker" experience. Enabled when:
+ *   - the forced room is `MOTION` (`?room=MOTION`) — the display becomes a live
+ *     mirror the moment the phone connects, OR
+ *   - `?game=motion-maker` is passed explicitly.
+ * In this mode the app runs the Motion Maker playground and skips the
+ * mirror-test + readiness ceremony (it's a live mirror, not a timed round).
+ * Works with `?debug=1` too (mouse = a hand, click/space = close it).
+ */
+export const MOTION_MAKER: boolean =
+  FORCED_ROOM === "MOTION" || params.get("game") === "motion-maker";

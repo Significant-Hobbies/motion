@@ -60,25 +60,100 @@ struct SetupView: View {
                         .foregroundStyle(.white.opacity(0.8))
                 }
             }
+            // Compact status pill for the relay stream, always visible when streaming so
+            // the user can glance at connection health without opening the panel.
+            if model.streamToWebsite {
+                streamStatusPill
+            }
             if showDevField {
-                devServerField
+                settingsPanel
             }
         }
         .padding(10)
         .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 16))
     }
 
-    private var devServerField: some View {
+    /// Expanded settings: Mac LAN IP (used for BOTH the game and the relay), the "Stream
+    /// to website" toggle, the room code, and a small hand-openness debug readout.
+    private var settingsPanel: some View {
         @Bindable var model = model
-        return VStack(alignment: .leading, spacing: 4) {
-            Text("Dev server IP (Mac running the web dev server)")
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.7))
-            TextField("192.168.x.x", text: $model.devServerIP)
-                .textFieldStyle(.roundedBorder)
-                .keyboardType(.URL)
-                .autocorrectionDisabled()
-                .textInputAutocapitalization(.never)
+        return VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Mac LAN IP (dev server + website relay)")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+                TextField("192.168.x.x", text: $model.devServerIP)
+                    .textFieldStyle(.roundedBorder)
+                    .keyboardType(.URL)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.never)
+            }
+
+            Divider().overlay(.white.opacity(0.2))
+
+            Toggle(isOn: $model.streamToWebsite) {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Stream to website")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(.white)
+                    Text("Send your motion + hands to a laptop browser")
+                        .font(.caption2)
+                        .foregroundStyle(.white.opacity(0.7))
+                }
+            }
+            .tint(.green)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Room code (open this on the laptop)")
+                    .font(.caption2)
+                    .foregroundStyle(.white.opacity(0.7))
+                TextField("MOTION", text: $model.roomCode)
+                    .textFieldStyle(.roundedBorder)
+                    .autocorrectionDisabled()
+                    .textInputAutocapitalization(.characters)
+            }
+
+            if model.streamToWebsite {
+                streamStatusPill
+            }
+
+            // Live hand-openness debug so the user can confirm open/close is detected.
+            if let hands = model.hands {
+                Text(String(format: "Hands  L %.2f   R %.2f", hands.left, hands.right))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.white.opacity(0.85))
+            }
+        }
+    }
+
+    /// A single-line connection status for the relay stream.
+    private var streamStatusPill: some View {
+        HStack(spacing: 6) {
+            Circle().fill(streamStatusColor).frame(width: 8, height: 8)
+            Text(streamStatusText)
+                .font(.caption2.bold())
+                .foregroundStyle(.white)
+        }
+    }
+
+    private var streamStatusText: String {
+        if model.peerConnected { return "Laptop connected" }
+        switch model.streamConnection {
+        case .idle: return "Off"
+        case .connecting: return "Connecting…"
+        case .connected: return "Streaming (waiting for laptop)"
+        case .reconnecting(let n): return "Reconnecting (\(n))…"
+        case .failed(let reason): return reason
+        }
+    }
+
+    private var streamStatusColor: Color {
+        if model.peerConnected { return .green }
+        switch model.streamConnection {
+        case .connected: return .green
+        case .connecting, .reconnecting: return .yellow
+        case .failed: return .red
+        case .idle: return .gray
         }
     }
 

@@ -87,7 +87,9 @@ final class PoseBridge {
     ///   - joints: smoothed, mirror-corrected joints (nil if no body this frame)
     ///   - quality: aggregate confidence 0..1
     ///   - tracking: setup verdict from `SetupEvaluator`
-    func pushLivePose(joints: Joints?, quality: Double, tracking: TrackingState) {
+    ///   - hands: latest per-hand openness 0..1 (nil if never detected), carried in the packet
+    func pushLivePose(joints: Joints?, quality: Double, tracking: TrackingState,
+                      hands: HandState? = nil) {
         guard let coordinator else { return }
 
         // Tracking transitions are cheap and important (they pause/resume the game), so
@@ -111,7 +113,8 @@ final class PoseBridge {
             // Monotonic clock (ms). Only differences matter to the web latency math.
             sentAt: now * 1000.0,
             quality: quality,
-            joints: joints
+            joints: joints,
+            hands: hands
         )
         // Encode to a compact JSON string and hand it to pushPose (the web bridge
         // JSON.parses string payloads). Encoding our fixed shape never fails in practice.
