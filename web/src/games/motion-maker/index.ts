@@ -354,91 +354,34 @@ export class MotionMaker implements Game {
     const [lhX, lhY] = r.toPx(j.leftHand[0], j.leftHand[1]);
     const [rhX, rhY] = r.toPx(j.rightHand[0], j.rightHand[1]);
 
-    // Shoulders: prefer the REAL tracked shoulder joints when present (smoother,
-    // anatomically correct). Fall back to a head/torso-derived shoulder — offset
-    // horizontally from the neck line — for mouse debug or when Vision drops them.
-    const derivedShoulderY = headY + (torsoY - headY) * 0.42;
-    const shoulderDx = r.sx(0.07);
-    const lShoulder: [number, number] = j.leftShoulder
-      ? r.toPx(j.leftShoulder[0], j.leftShoulder[1])
-      : [torsoX - shoulderDx, derivedShoulderY];
-    const rShoulder: [number, number] = j.rightShoulder
-      ? r.toPx(j.rightShoulder[0], j.rightShoulder[1])
-      : [torsoX + shoulderDx, derivedShoulderY];
+    // Simple stick figure: both arms hang off ONE neck anchor on the spine (no
+    // separate shoulders / shoulder line). ~42% down from the head toward the torso.
+    const neckX = headX + (torsoX - headX) * 0.42;
+    const neckY = headY + (torsoY - headY) * 0.42;
 
     ctx.save();
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-
-    // Torso slab.
     ctx.strokeStyle = "#f4f7ff";
-    ctx.lineWidth = Math.max(6, r.sx(0.024));
+    ctx.lineWidth = Math.max(6, r.sx(0.02));
+
+    // Spine.
     ctx.beginPath();
     ctx.moveTo(headX, headY);
     ctx.lineTo(torsoX, torsoY);
     ctx.stroke();
 
-    // Shoulder line.
-    ctx.lineWidth = Math.max(5, r.sx(0.018));
-    ctx.beginPath();
-    ctx.moveTo(lShoulder[0], lShoulder[1]);
-    ctx.lineTo(rShoulder[0], rShoulder[1]);
-    ctx.stroke();
-
-    // Arms. When the real shoulder + elbow are present, draw a true bent chain
-    // shoulder→elbow→hand (much smoother than a derived curve). Otherwise fall
-    // back to the derived-shoulder curved arm with a gentle bend toward torso.
-    const arms: {
-      shoulder: [number, number];
-      elbow: [number, number] | undefined;
-      hand: [number, number];
-    }[] = [
-      {
-        shoulder: lShoulder,
-        elbow:
-          j.leftShoulder && j.leftElbow
-            ? r.toPx(j.leftElbow[0], j.leftElbow[1])
-            : undefined,
-        hand: [lhX, lhY],
-      },
-      {
-        shoulder: rShoulder,
-        elbow:
-          j.rightShoulder && j.rightElbow
-            ? r.toPx(j.rightElbow[0], j.rightElbow[1])
-            : undefined,
-        hand: [rhX, rhY],
-      },
+    // Arms: neck → elbow (when tracked, for a real bend) → hand. Straight fallback.
+    const arms: { elbow: [number, number] | undefined; hand: [number, number] }[] = [
+      { elbow: j.leftElbow ? r.toPx(j.leftElbow[0], j.leftElbow[1]) : undefined, hand: [lhX, lhY] },
+      { elbow: j.rightElbow ? r.toPx(j.rightElbow[0], j.rightElbow[1]) : undefined, hand: [rhX, rhY] },
     ];
-    for (const { shoulder: sh, elbow, hand } of arms) {
+    for (const { elbow, hand } of arms) {
       ctx.beginPath();
-      ctx.moveTo(sh[0], sh[1]);
-      if (elbow) {
-        // Real bend: two rounded segments through the elbow.
-        ctx.lineTo(elbow[0], elbow[1]);
-        ctx.lineTo(hand[0], hand[1]);
-      } else {
-        // Derived arm: single curve with an implied elbow.
-        const ex = (sh[0] + hand[0]) / 2;
-        const ey = (sh[1] + hand[1]) / 2 + r.sy(0.03);
-        ctx.quadraticCurveTo(ex, ey, hand[0], hand[1]);
-      }
+      ctx.moveTo(neckX, neckY);
+      if (elbow) ctx.lineTo(elbow[0], elbow[1]);
+      ctx.lineTo(hand[0], hand[1]);
       ctx.stroke();
-      // Rounded elbow joint dot when we have a real bend.
-      if (elbow) {
-        ctx.fillStyle = "#f4f7ff";
-        ctx.beginPath();
-        ctx.arc(elbow[0], elbow[1], Math.max(4, r.sx(0.012)), 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-
-    // Rounded shoulder joint dots (also anchor the derived shoulder line ends).
-    ctx.fillStyle = "#f4f7ff";
-    for (const sh of [lShoulder, rShoulder]) {
-      ctx.beginPath();
-      ctx.arc(sh[0], sh[1], Math.max(4, r.sx(0.012)), 0, Math.PI * 2);
-      ctx.fill();
     }
 
     // Head.
