@@ -20,13 +20,31 @@ import type {
 // ── Interaction tuning ────────────────────────────────────────────────────────
 
 /** Openness at/below which a hand counts as CLOSED (a fist → grab). */
-const GRAB_THRESHOLD = 0.4;
+const GRAB_THRESHOLD = 0.55;
 /** Openness at/above which a held hand counts as OPEN (→ release). */
-const RELEASE_THRESHOLD = 0.6;
-/** Normalized (x-relative) reach: a hand this close to an object can grab it. */
-const GRAB_RADIUS = 0.11;
+const RELEASE_THRESHOLD = 0.72;
+/**
+ * Normalized (x-relative) reach: a hand this close to an object can grab it.
+ * Generous so grabbing is forgiving at body distance where the pose is jittery.
+ */
+const GRAB_RADIUS = 0.15;
 /** Object radius (normalized, x-relative). */
 const OBJ_RADIUS = 0.055;
+
+/**
+ * Proximity-dwell fallback: if hand-openness never varies (e.g. no hand-tracking
+ * data, so `leftHandOpen`/`rightHandOpen` are pinned at 1.0), openness can't
+ * drive a grab. Instead, hovering a hand within reach of an object for this long
+ * grabs it, so the game still works without hand data. Opening (when data is
+ * present) or moving away still releases.
+ */
+const DWELL_GRAB_MS = 450;
+/**
+ * A hand's openness is considered "live" (actually varying, i.e. real hand data
+ * is present) once we've seen it move at least this far from its running mean.
+ * Below this we fall back to proximity-dwell grabbing.
+ */
+const OPENNESS_LIVE_RANGE = 0.08;
 /** Target-bin half-width / half-height (normalized). */
 const BIN_W = 0.16;
 const BIN_H = 0.13;
@@ -65,10 +83,29 @@ interface HandTrack {
   prevOpen: number;
   /** Object id currently held, or null. */
   holding: number | null;
+  /** Running mean of openness, to detect whether it actually varies (live data). */
+  openMean: number;
+  /** Max observed deviation of openness from its mean — the "liveness" signal. */
+  openRange: number;
+  /** ms this hand has continuously hovered its nearest grabbable object. */
+  dwellMs: number;
+  /** Object id currently being dwelled over, to reset dwell when it changes. */
+  dwellId: number | null;
 }
 
 function newHand(): HandTrack {
-  return { x: 0.5, y: 0.5, vx: 0, vy: 0, prevOpen: 1, holding: null };
+  return {
+    x: 0.5,
+    y: 0.5,
+    vx: 0,
+    vy: 0,
+    prevOpen: 1,
+    holding: null,
+    openMean: 1,
+    openRange: 0,
+    dwellMs: 0,
+    dwellId: null,
+  };
 }
 
 export class MotionMaker implements Game {
@@ -147,8 +184,8 @@ export class MotionMaker implements Game {
     this.binFlash = Math.max(0, this.binFlash - dt);
 
     this.trackHands(dt, body);
-    this.resolveGrabs("left", body.leftHandOpen);
-    this.resolveGrabs("right", body.rightHandOpen);
+    this.resolveGrabs("left", body.leftHandOpen, dt);
+    this.resolveGrabs("right", body.rightHandOpen, dt);
     this.integrateObjects(dt);
   }
 
@@ -178,34 +215,96 @@ export class MotionMaker implements Game {
     }
   }
 
-  /** Handle grab (open→closed near object) and release (opens) for one hand. */
-  private resolveGrabs(which: Which, open: number): void {
+  /**
+   * Handle grab + release for one hand. Designed to be forgiving:
+   *
+   * - Grab fires when a hand is CLOSED near a free object — on the open→closed
+   *   edge OR "sticky" (a hand that's already closed as it moves over an object
+   *   still grabs it), so a missed prior-open frame doesn't block a grab.
+   * - When openness data isn't live (pinned at ~1.0 because there's no hand
+   *   tracking), openness can't drive a grab at all — so we fall back to a
+   *   proximity-DWELL grab: hover within reach of an object briefly and it snaps
+   *   to the hand.
+   * - Release: opening the hand past the release threshold (when data is live),
+   *   OR moving well out of reach in the dwell fallback.
+   */
+  private resolveGrabs(which: Which, open: number, dt: number): void {
     const h = this.hands[which];
-    const wasClosed = h.prevOpen < GRAB_THRESHOLD;
-    const isClosed = open < GRAB_THRESHOLD;
 
-    // Release: the hand opened past the release threshold while holding.
-    if (h.holding !== null && open > RELEASE_THRESHOLD) {
-      const obj = this.objects.find((o) => o.id === h.holding);
-      if (obj) {
-        obj.heldBy = null;
-        // Impart the hand's recent velocity so you can toss it.
-        obj.vx = h.vx;
-        obj.vy = h.vy;
+    // Track whether openness actually varies. If it's stuck (no hand data), we
+    // can't trust open/close and must use the proximity-dwell fallback instead.
+    h.openMean += (open - h.openMean) * 0.05;
+    h.openRange = Math.max(h.openRange * 0.995, Math.abs(open - h.openMean));
+    const opennessLive = h.openRange > OPENNESS_LIVE_RANGE;
+
+    const isClosed = open < GRAB_THRESHOLD;
+    h.prevOpen = open;
+
+    if (opennessLive) {
+      // ── Openness-driven path (real hand data) ──────────────────────────────
+      // Release: the hand opened past the release threshold while holding.
+      if (h.holding !== null && open > RELEASE_THRESHOLD) {
+        this.releaseHeld(h);
       }
-      h.holding = null;
+      // Grab: closed near a free object. Sticky — an already-closed hand moving
+      // onto an object grabs it too (no perfect open→closed edge required), so
+      // grabbing is easy and tolerant of missed frames.
+      if (h.holding === null && isClosed) {
+        const target = this.nearestGrabbable(h.x, h.y);
+        if (target) {
+          target.heldBy = which;
+          h.holding = target.id;
+        }
+      }
+      h.dwellMs = 0;
+      h.dwellId = null;
+      return;
     }
 
-    // Grab: on the open→closed edge, snap the nearest free in-reach object.
-    if (h.holding === null && isClosed && !wasClosed) {
-      const target = this.nearestGrabbable(h.x, h.y);
-      if (target) {
+    // ── Proximity-dwell fallback (openness not usable) ────────────────────────
+    if (h.holding !== null) {
+      // Release when the held hand moves clearly out of reach of the bin area /
+      // its object drop zone: drop by dwelling away from the object.
+      const held = this.objects.find((o) => o.id === h.holding);
+      if (!held) {
+        h.holding = null;
+      } else {
+        const d = Math.hypot(held.x - h.x, held.y - h.y);
+        if (d > GRAB_RADIUS * 1.6) this.releaseHeld(h);
+      }
+      h.dwellMs = 0;
+      h.dwellId = null;
+      return;
+    }
+
+    const target = this.nearestGrabbable(h.x, h.y);
+    if (target) {
+      if (h.dwellId === target.id) h.dwellMs += dt * 1000;
+      else {
+        h.dwellId = target.id;
+        h.dwellMs = 0;
+      }
+      if (h.dwellMs >= DWELL_GRAB_MS) {
         target.heldBy = which;
         h.holding = target.id;
+        h.dwellMs = 0;
+        h.dwellId = null;
       }
+    } else {
+      h.dwellMs = 0;
+      h.dwellId = null;
     }
+  }
 
-    h.prevOpen = open;
+  /** Release the object a hand holds, imparting the hand's recent velocity. */
+  private releaseHeld(h: HandTrack): void {
+    const obj = this.objects.find((o) => o.id === h.holding);
+    if (obj) {
+      obj.heldBy = null;
+      obj.vx = h.vx;
+      obj.vy = h.vy;
+    }
+    h.holding = null;
   }
 
   private nearestGrabbable(hx: number, hy: number): FloatObj | null {
@@ -354,10 +453,14 @@ export class MotionMaker implements Game {
     const { ctx } = r;
     const j = body.joints;
 
-    const [headX, headY] = r.toPx(j.head[0], j.head[1]);
-    const [torsoX, torsoY] = r.toPx(j.torso[0], j.torso[1]);
-    const [lhX, lhY] = r.toPx(j.leftHand[0], j.leftHand[1]);
-    const [rhX, rhY] = r.toPx(j.rightHand[0], j.rightHand[1]);
+    // Map through a clamped projection so the avatar renders across the WHOLE
+    // frame — including hands dropped below the waist. A hand that briefly
+    // leaves the tracked frame (y or x slightly outside 0..1) is pinned to the
+    // nearest edge instead of vanishing off-canvas.
+    const [headX, headY] = this.pt(r, j.head);
+    const [torsoX, torsoY] = this.pt(r, j.torso);
+    const [lhX, lhY] = this.pt(r, j.leftHand);
+    const [rhX, rhY] = this.pt(r, j.rightHand);
 
     // Simple stick figure: both arms hang off ONE neck anchor on the spine (no
     // separate shoulders / shoulder line). ~42% down from the head toward the torso.
@@ -378,8 +481,8 @@ export class MotionMaker implements Game {
 
     // Arms: neck → elbow (when tracked, for a real bend) → hand. Straight fallback.
     const arms: { elbow: [number, number] | undefined; hand: [number, number] }[] = [
-      { elbow: j.leftElbow ? r.toPx(j.leftElbow[0], j.leftElbow[1]) : undefined, hand: [lhX, lhY] },
-      { elbow: j.rightElbow ? r.toPx(j.rightElbow[0], j.rightElbow[1]) : undefined, hand: [rhX, rhY] },
+      { elbow: j.leftElbow ? this.pt(r, j.leftElbow) : undefined, hand: [lhX, lhY] },
+      { elbow: j.rightElbow ? this.pt(r, j.rightElbow) : undefined, hand: [rhX, rhY] },
     ];
     for (const { elbow, hand } of arms) {
       ctx.beginPath();
@@ -407,6 +510,19 @@ export class MotionMaker implements Game {
       this.hands.right.holding !== null,
     );
 
+  }
+
+  /**
+   * Project a normalized joint into play-area pixels, clamped to the full frame
+   * (a small margin outside 0..1 is allowed so joints at the very edge still sit
+   * on-screen). Ensures the whole avatar — head, torso, arms, and both hands —
+   * renders anywhere in the frame, including low/below-the-waist hand positions,
+   * without ever disappearing off-canvas.
+   */
+  private pt(r: Renderer, p: readonly [number, number]): [number, number] {
+    const nx = p[0] < 0 ? 0 : p[0] > 1 ? 1 : p[0];
+    const ny = p[1] < 0 ? 0 : p[1] > 1 ? 1 : p[1];
+    return r.toPx(nx, ny);
   }
 
   /** Open hand = a spread ring of fingers; closed hand = a filled fist. */

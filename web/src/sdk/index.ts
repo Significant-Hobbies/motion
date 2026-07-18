@@ -134,6 +134,13 @@ export interface PairingCtx {
 const STEP_MS = 1000 / 60;
 
 /**
+ * Bridge mode only: if native never round-trips `start()` after the web view is
+ * up, auto-start the game once this long has elapsed in `bridge-idle` so the
+ * phone can never sit on a blank idle surface forever.
+ */
+const BRIDGE_IDLE_FALLBACK_MS = 1500;
+
+/**
  * Owns one running Motion session for a single `Game`. Construct via
  * `createSession`. Drives a requestAnimationFrame loop with fixed-timestep
  * updates and frame-time rendering.
@@ -170,6 +177,11 @@ export class GameHost {
 
   private screen: SessionScreen;
   private mirrorStableSince = -1;
+  /**
+   * Wall-clock ms when we first entered `bridge-idle` (bridge mode only), used to
+   * bound how long we can sit idle before auto-starting the game. -1 until set.
+   */
+  private bridgeIdleSince = -1;
   private paused = false;
   private lastResult: GameResult | null = null;
   private gameInited = false;
@@ -391,6 +403,8 @@ export class GameHost {
     const wasResults = this.screen === "results";
     this.screen = next;
     this.screens.clear();
+    // Re-arm the bridge-idle fallback timer each time we (re)enter idle.
+    if (next === "bridge-idle") this.bridgeIdleSince = -1;
     if (next === "game") {
       const replay = this.gameInited;
       if (!this.gameInited) {
@@ -439,14 +453,33 @@ export class GameHost {
 
   private step(dtMs: number, now: number): void {
     switch (this.screen) {
-      case "bridge-idle":
-        // Embedded/v1: readiness ran on the phone. We wait here until native
-        // calls window.__motion.start(), which flips us to "game".
+      case "bridge-idle": {
+        // Embedded/v1: readiness ran on the phone. Native normally flips us to
+        // "game" via window.__motion.start(). But that round-trip can hang (or
+        // never fire), which used to leave the phone stuck on a blank idle
+        // surface after calibration. So we self-advance:
+        //   1. immediately when native's start() latched a request, OR
+        //   2. as soon as usable input is flowing when readiness is skipped
+        //      (the on-phone Motion Maker: it's a live mirror, not a gated
+        //      round — no second native handshake required), OR
+        //   3. after a short fallback timeout regardless, so idle can't deadlock.
+        if (this.bridgeIdleSince < 0) this.bridgeIdleSince = now;
+
         if (this.nativeStartRequested) {
           this.nativeStartRequested = false;
           this.setScreen("game");
+          break;
+        }
+
+        if (this.transport === "bridge" && this.skipReadiness) {
+          const inputFlowing = this.body.health !== "no_signal";
+          const timedOut = now - this.bridgeIdleSince > BRIDGE_IDLE_FALLBACK_MS;
+          if (inputFlowing || timedOut) {
+            this.setScreen("game");
+          }
         }
         break;
+      }
 
       case "pairing":
         if (this.skipReadiness) {

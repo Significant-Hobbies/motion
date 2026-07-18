@@ -30,7 +30,11 @@ const overlay = new Overlay(overlayEl);
 
 // `?room=MOTION` (or `?game=motion-maker`) runs the interactive Motion Maker
 // playground as a live mirror; everything else keeps the classic Reach & Dodge.
-const game: Game = MOTION_MAKER ? new MotionMaker() : new ReachDodge();
+// Motion Maker is the game everywhere the phone (bridge) hosts it, plus the
+// browser live-mirror (`?room=MOTION` / `?game=motion-maker`). Classic Reach &
+// Dodge stays reachable only for the plain browser socket default.
+const useMotionMaker = MOTION_MAKER || TRANSPORT === "bridge";
+const game: Game = useMotionMaker ? new MotionMaker() : new ReachDodge();
 
 const session = createSession({
   game,
@@ -43,7 +47,7 @@ const session = createSession({
     record: RECORD,
     transport: TRANSPORT,
     // Motion Maker is a live interactive mirror — skip the readiness ceremony.
-    skipReadiness: MOTION_MAKER,
+    skipReadiness: useMotionMaker,
   },
 });
 
