@@ -127,6 +127,7 @@ export default class MotionServer implements Party.Server {
         if (!isPosePacket(msg)) return; // drop junk silently.
         if (!this.allowPose(conn.id)) return; // over budget → silent drop.
         this.relayTo("display", raw);
+        this.debugPose(); // throttled dev log so we can watch the stream server-side.
         return;
 
       case "status":
@@ -205,6 +206,19 @@ export default class MotionServer implements Party.Server {
 
     // …and tell the OTHER role that this peer just arrived.
     this.announcePeer(role, true, conn.id);
+  }
+
+  // Dev diagnostic: count poses and log throttled so we can confirm, from the
+  // server side alone, that a controller is streaming and whether a display exists.
+  private poseCount = 0;
+  private debugPose() {
+    this.poseCount++;
+    if (this.poseCount === 1 || this.poseCount % 30 === 0) {
+      const hasDisplay = this.roleTaken("display", "");
+      console.log(
+        `[${this.room.id}] pose #${this.poseCount} from controller — display connected: ${hasDisplay}`,
+      );
+    }
   }
 
   /** True if some OTHER live connection has already claimed `role`. */
