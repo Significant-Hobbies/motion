@@ -13,6 +13,10 @@ export default defineConfig(({ command }) => ({
   server: {
     host: true,
     port: 5173,
+    // Allow the dev server to be reached by the Mac's mDNS name (…​.local) and any
+    // LAN host, so a TV/other-device browser (or the phone webview) can load it
+    // without Vite's host-check returning 403.
+    allowedHosts: true,
   },
   build: {
     target: "es2022",
