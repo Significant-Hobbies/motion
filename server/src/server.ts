@@ -125,7 +125,7 @@ export default class MotionServer implements Party.Server {
         if (!isPosePacket(msg)) return; // drop junk silently.
         if (!this.allowPose(conn.id)) return; // over budget → silent drop.
         this.relayTo("display", raw);
-        this.debugPose(); // throttled dev log so we can watch the stream server-side.
+        this.debugPose(raw); // throttled dev log so we can watch the stream server-side.
         return;
 
       case "status":
@@ -234,12 +234,16 @@ export default class MotionServer implements Party.Server {
   // Dev diagnostic: count poses and log throttled so we can confirm, from the
   // server side alone, that a controller is streaming and whether a display exists.
   private poseCount = 0;
-  private debugPose() {
+  private debugPose(raw: string) {
     this.poseCount++;
     if (this.poseCount === 1 || this.poseCount % 30 === 0) {
       const hasDisplay = this.roleTaken("display", "");
+      // Cheap field-presence check tells us if the phone is on the NEW build:
+      // new build streams fingertips + elbows; old build has neither.
+      const fingertips = raw.includes('"fingertips"');
+      const elbows = raw.includes('"leftElbow"') || raw.includes('"rightElbow"');
       console.log(
-        `[${this.room.id}] pose #${this.poseCount} from controller — display connected: ${hasDisplay}`,
+        `[${this.room.id}] pose #${this.poseCount} — display:${hasDisplay} fingertips:${fingertips} elbows:${elbows}`,
       );
     }
   }

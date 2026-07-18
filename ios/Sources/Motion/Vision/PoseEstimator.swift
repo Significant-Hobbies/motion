@@ -358,10 +358,14 @@ final class PoseEstimator: @unchecked Sendable {
             return (nil, nil)
         }
 
+        // Each side's points must be lifted out of ITS OWN ROI. When a side fell back to the
+        // full-frame request, its ROI is the full frame (identity remap).
+        let leftROI = haveLeft ? leftHandRequest.regionOfInterest : fullFrameROI
+        let rightROI = haveRight ? rightHandRequest.regionOfInterest : fullFrameROI
         let leftReading = handEstimator.analyzeSide(observation: leftObs, side: .left,
-                                                    mapPoint: mapRecognizedPoint)
+                                                    mapPoint: { self.mapRecognizedPoint($0, roi: leftROI) })
         let rightReading = handEstimator.analyzeSide(observation: rightObs, side: .right,
-                                                     mapPoint: mapRecognizedPoint)
+                                                     mapPoint: { self.mapRecognizedPoint($0, roi: rightROI) })
 
         let hands = HandState(left: leftReading.openness, right: rightReading.openness)
 
@@ -389,7 +393,8 @@ final class PoseEstimator: @unchecked Sendable {
                 let w = pts[.wrist], w.confidence >= confidenceThreshold
             else { continue }
             // Map the fallback wrist into the same top-left/mirror frame for a fair compare.
-            let mapped = mapRecognizedPoint(w)
+            // Fallback observations are full-image, so use the full-frame (identity) ROI.
+            let mapped = mapRecognizedPoint(w, roi: fullFrameROI)
             let dx = mapped[0] - Double(target.x), dy = mapped[1] - Double(target.y)
             let d = dx * dx + dy * dy
             if d < bestDist { bestDist = d; best = obs }
@@ -438,20 +443,20 @@ final class PoseEstimator: @unchecked Sendable {
     ///   ROI-RELATIVE instead. To switch, un-comment the ROI-relative remap below and pass
     ///   the active ROI in. This is deliberately isolated to ONE helper so the flip is a
     ///   two-line change and nothing else needs to move.
-    private func mapRecognizedPoint(_ point: VNRecognizedPoint) -> Point2 {
-        // ── Full-image mapping (ASSUMED CORRECT — Vision remaps ROI results to full image) ──
-        let x = Double(point.location.x)          // already mirror-space
-        let y = 1.0 - Double(point.location.y)    // Vision bottom-left → protocol top-left
-        return [x, y]
-
-        // ── ROI-RELATIVE fallback (enable only if the above is wrong on device) ─────────────
-        // Given the side's ROI (Vision bottom-left space) that produced this point:
-        //   let fullX = roi.minX + Double(point.location.x) * roi.width
-        //   let fullYBottomLeft = roi.minY + Double(point.location.y) * roi.height
-        //   let x = fullX                          // still mirror-space
-        //   let y = 1.0 - fullYBottomLeft          // bottom-left → top-left
-        //   return [x, y]
+    private func mapRecognizedPoint(_ point: VNRecognizedPoint, roi: CGRect) -> Point2 {
+        // CONFIRMED ON DEVICE: Vision returns hand-landmark coords RELATIVE TO THE ROI
+        // (0..1 within the crop), NOT remapped to the full image. So we lift them into
+        // full-image space using the ROI rect (Vision bottom-left), then flip to top-left.
+        // For the full-frame fallback (roi = 0,0,1,1) this is an identity — so both the
+        // ROI-zoomed and fallback paths use the exact same helper.
+        let fullX = Double(roi.minX + point.location.x * roi.width)   // full-image, mirror-space
+        let fullYBottomLeft = Double(roi.minY + point.location.y * roi.height)
+        return [fullX, 1.0 - fullYBottomLeft]                        // bottom-left → top-left
     }
+
+    /// The full-frame ROI — used for fallback (full-image) observations, where the
+    /// ROI-relative remap collapses to an identity.
+    private let fullFrameROI = CGRect(x: 0, y: 0, width: 1, height: 1)
 
     private func emitLost() {
         // Decay smoothing state so a fresh detection doesn't lerp from a stale pose.
