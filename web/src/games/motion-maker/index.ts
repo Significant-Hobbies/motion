@@ -19,10 +19,16 @@ import type {
 
 // ── Interaction tuning ────────────────────────────────────────────────────────
 
-/** Openness at/below which a hand counts as CLOSED (a fist → grab). */
-const GRAB_THRESHOLD = 0.55;
-/** Openness at/above which a held hand counts as OPEN (→ release). */
-const RELEASE_THRESHOLD = 0.72;
+/** Openness at/below which an ARMED hand grabs (a clear fist). */
+const GRAB_THRESHOLD = 0.4;
+/** Openness at/above which a held hand releases (a clear open). */
+const RELEASE_THRESHOLD = 0.6;
+/**
+ * Openness at/above which a hand becomes "armed" (clearly open). A grab requires an
+ * armed hand to then close, so grabbing always needs a deliberate open→close swing —
+ * a noisy value hovering near one threshold can never trigger an accidental grab.
+ */
+const OPEN_ARM_THRESHOLD = 0.6;
 /**
  * Normalized (x-relative) reach: a hand this close to an object can grab it.
  * Generous so grabbing is forgiving at body distance where the pose is jittery.
@@ -30,21 +36,6 @@ const RELEASE_THRESHOLD = 0.72;
 const GRAB_RADIUS = 0.15;
 /** Object radius (normalized, x-relative). */
 const OBJ_RADIUS = 0.055;
-
-/**
- * Proximity-dwell fallback: if hand-openness never varies (e.g. no hand-tracking
- * data, so `leftHandOpen`/`rightHandOpen` are pinned at 1.0), openness can't
- * drive a grab. Instead, hovering a hand within reach of an object for this long
- * grabs it, so the game still works without hand data. Opening (when data is
- * present) or moving away still releases.
- */
-const DWELL_GRAB_MS = 450;
-/**
- * A hand's openness is considered "live" (actually varying, i.e. real hand data
- * is present) once we've seen it move at least this far from its running mean.
- * Below this we fall back to proximity-dwell grabbing.
- */
-const OPENNESS_LIVE_RANGE = 0.08;
 /** Target-bin half-width / half-height (normalized). */
 const BIN_W = 0.16;
 const BIN_H = 0.13;
@@ -83,29 +74,12 @@ interface HandTrack {
   prevOpen: number;
   /** Object id currently held, or null. */
   holding: number | null;
-  /** Running mean of openness, to detect whether it actually varies (live data). */
-  openMean: number;
-  /** Max observed deviation of openness from its mean — the "liveness" signal. */
-  openRange: number;
-  /** ms this hand has continuously hovered its nearest grabbable object. */
-  dwellMs: number;
-  /** Object id currently being dwelled over, to reset dwell when it changes. */
-  dwellId: number | null;
+  /** True once the hand has been clearly OPEN — arms the next grab. Consumed on grab. */
+  armed: boolean;
 }
 
 function newHand(): HandTrack {
-  return {
-    x: 0.5,
-    y: 0.5,
-    vx: 0,
-    vy: 0,
-    prevOpen: 1,
-    holding: null,
-    openMean: 1,
-    openRange: 0,
-    dwellMs: 0,
-    dwellId: null,
-  };
+  return { x: 0.5, y: 0.5, vx: 0, vy: 0, prevOpen: 1, holding: null, armed: false };
 }
 
 export class MotionMaker implements Game {
@@ -184,8 +158,8 @@ export class MotionMaker implements Game {
     this.binFlash = Math.max(0, this.binFlash - dt);
 
     this.trackHands(dt, body);
-    this.resolveGrabs("left", body.leftHandOpen, dt);
-    this.resolveGrabs("right", body.rightHandOpen, dt);
+    this.resolveGrabs("left", body.leftHandOpen);
+    this.resolveGrabs("right", body.rightHandOpen);
     this.integrateObjects(dt);
   }
 
@@ -216,84 +190,36 @@ export class MotionMaker implements Game {
   }
 
   /**
-   * Handle grab + release for one hand. Designed to be forgiving:
-   *
-   * - Grab fires when a hand is CLOSED near a free object — on the open→closed
-   *   edge OR "sticky" (a hand that's already closed as it moves over an object
-   *   still grabs it), so a missed prior-open frame doesn't block a grab.
-   * - When openness data isn't live (pinned at ~1.0 because there's no hand
-   *   tracking), openness can't drive a grab at all — so we fall back to a
-   *   proximity-DWELL grab: hover within reach of an object briefly and it snaps
-   *   to the hand.
-   * - Release: opening the hand past the release threshold (when data is live),
-   *   OR moving well out of reach in the dwell fallback.
+   * Grab + release for one hand, driven ONLY by a deliberate OPEN→CLOSE gesture —
+   * no hover/proximity grab (that grabbed things unintentionally). Hysteresis: the
+   * hand must first be clearly OPEN (which "arms" a grab), then go clearly CLOSED
+   * over a free object to grab it; the arm is consumed on grab so you must re-open
+   * to grab again. A noisy openness value wobbling near one threshold can't trigger
+   * a grab because it has to swing across the whole open→closed range.
    */
-  private resolveGrabs(which: Which, open: number, dt: number): void {
+  private resolveGrabs(which: Which, open: number): void {
     const h = this.hands[which];
 
-    // Track whether openness actually varies. If it's stuck (no hand data), we
-    // can't trust open/close and must use the proximity-dwell fallback instead.
-    h.openMean += (open - h.openMean) * 0.05;
-    h.openRange = Math.max(h.openRange * 0.995, Math.abs(open - h.openMean));
-    const opennessLive = h.openRange > OPENNESS_LIVE_RANGE;
+    // Arm once the hand is clearly OPEN.
+    if (open > OPEN_ARM_THRESHOLD) h.armed = true;
 
-    const isClosed = open < GRAB_THRESHOLD;
-    h.prevOpen = open;
-
-    if (opennessLive) {
-      // ── Openness-driven path (real hand data) ──────────────────────────────
-      // Release: the hand opened past the release threshold while holding.
-      if (h.holding !== null && open > RELEASE_THRESHOLD) {
-        this.releaseHeld(h);
-      }
-      // Grab: closed near a free object. Sticky — an already-closed hand moving
-      // onto an object grabs it too (no perfect open→closed edge required), so
-      // grabbing is easy and tolerant of missed frames.
-      if (h.holding === null && isClosed) {
-        const target = this.nearestGrabbable(h.x, h.y);
-        if (target) {
-          target.heldBy = which;
-          h.holding = target.id;
-        }
-      }
-      h.dwellMs = 0;
-      h.dwellId = null;
-      return;
+    // Release: opened past the release threshold while holding (then must re-arm).
+    if (h.holding !== null && open > RELEASE_THRESHOLD) {
+      this.releaseHeld(h);
+      h.armed = false;
     }
 
-    // ── Proximity-dwell fallback (openness not usable) ────────────────────────
-    if (h.holding !== null) {
-      // Release when the held hand moves clearly out of reach of the bin area /
-      // its object drop zone: drop by dwelling away from the object.
-      const held = this.objects.find((o) => o.id === h.holding);
-      if (!held) {
-        h.holding = null;
-      } else {
-        const d = Math.hypot(held.x - h.x, held.y - h.y);
-        if (d > GRAB_RADIUS * 1.6) this.releaseHeld(h);
-      }
-      h.dwellMs = 0;
-      h.dwellId = null;
-      return;
-    }
-
-    const target = this.nearestGrabbable(h.x, h.y);
-    if (target) {
-      if (h.dwellId === target.id) h.dwellMs += dt * 1000;
-      else {
-        h.dwellId = target.id;
-        h.dwellMs = 0;
-      }
-      if (h.dwellMs >= DWELL_GRAB_MS) {
+    // Grab: an ARMED hand that goes clearly CLOSED over a free object in reach.
+    if (h.holding === null && h.armed && open < GRAB_THRESHOLD) {
+      const target = this.nearestGrabbable(h.x, h.y);
+      if (target) {
         target.heldBy = which;
         h.holding = target.id;
-        h.dwellMs = 0;
-        h.dwellId = null;
       }
-    } else {
-      h.dwellMs = 0;
-      h.dwellId = null;
+      h.armed = false; // consume the arm — re-open to grab again
     }
+
+    h.prevOpen = open;
   }
 
   /** Release the object a hand holds, imparting the hand's recent velocity. */
