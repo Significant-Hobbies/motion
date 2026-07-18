@@ -1,0 +1,23 @@
+{
+  "name": "motion",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Use your phone as a full-body motion controller for a browser game.",
+  "workspaces": [
+    "server",
+    "web"
+  ],
+  "scripts": {
+    "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "npm --workspace server run dev",
+    "dev:web": "npm --workspace web run dev",
+    "typecheck": "npm --workspace server run typecheck && npm --workspace web run typecheck",
+    "build": "npm --workspace web run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

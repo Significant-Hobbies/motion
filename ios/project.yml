@@ -1,0 +1,78 @@
+# XcodeGen spec for the Motion iOS motion controller.
+#
+# Generate the Xcode project with:
+#     brew install xcodegen        # once
+#     cd ios && xcodegen generate
+#     open Motion.xcodeproj
+#
+# Then set your Development Team and (optionally) a unique bundle id in the target's
+# Signing & Capabilities tab before building to a physical device.
+
+name: Motion
+
+options:
+  bundleIdPrefix: com.motion
+  deploymentTarget:
+    iOS: "17.0"
+  createIntermediateGroups: true
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    # Modern concurrency checking; the sources are written to be Swift 6 clean.
+    SWIFT_STRICT_CONCURRENCY: complete
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+
+targets:
+  Motion:
+    type: application
+    platform: iOS
+    deploymentTarget: "17.0"
+    sources:
+      # Directory glob: every file under Sources is compiled, so new files (Game/,
+      # Recording/ScreenRecorder.swift, Views/GameView.swift) are picked up automatically.
+      - path: Sources
+    info:
+      # XcodeGen GENERATES this plist from the properties below on every `xcodegen
+      # generate`, so the keys MUST live here (a hand-edited Info.plist would be
+      # overwritten). Missing usage strings => hard TCC crash on first camera access.
+      path: Sources/Motion/Info.plist
+      properties:
+        NSCameraUsageDescription: "Motion uses the front camera on-device to turn your body movements into game controls. Camera video never leaves your phone."
+        NSPhotoLibraryAddUsageDescription: "Motion saves your gameplay recordings (the game plus your camera) to Photos."
+        NSLocalNetworkUsageDescription: "Motion connects to the game running on your computer over your local Wi-Fi."
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.motion.controller
+        GENERATE_INFOPLIST_FILE: NO
+        TARGETED_DEVICE_FAMILY: "1,2"   # iPhone + iPad
+        # SwiftUI @main App lifecycle — no AppDelegate/SceneDelegate needed.
+        ENABLE_PREVIEWS: YES
+    # System frameworks. AVFoundation + Vision + SwiftUI are weak-implicit via import,
+    # but we link them explicitly for clarity. No SPM dependencies are required.
+    dependencies:
+      - sdk: AVFoundation.framework
+      - sdk: Vision.framework
+      - sdk: CoreVideo.framework
+      - sdk: CoreMedia.framework
+      # WebKit: hosts the web game in a full-screen WKWebView (v1 in-process JS bridge).
+      - sdk: WebKit.framework
+      # ReplayKit: v1 screen capture — records the game webview + camera inset as ONE mp4.
+      - sdk: ReplayKit.framework
+      # Photos: saving the recorded (game + camera) screen video to the library.
+      - sdk: Photos.framework

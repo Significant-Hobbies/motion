@@ -1,0 +1,25 @@
+# Node
+node_modules/
+dist/
+.parcel-cache/
+*.tsbuildinfo
+
+# PartyKit
+.partykit/
+
+# Vite
+web/dist/
+
+# iOS / Xcode
+ios/Motion.xcodeproj/
+ios/*.xcworkspace/
+ios/build/
+ios/DerivedData/
+xcuserdata/
+*.xcuserstate
+.DS_Store
+
+# Env / local
+.env
+.env.local
+*.log

@@ -1,0 +1,14 @@
+{
+  "name": "motion-server",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "partykit": "^0.0.111",
+    "typescript": "^5.6.0"
+  }
+}

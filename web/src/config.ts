@@ -1,0 +1,39 @@
+// Runtime config resolved from URL query params + Vite env, with sane dev defaults.
+
+import { hasNativeBridge } from "./sdk/bridge";
+
+const params = new URLSearchParams(location.search);
+
+/** Which input transport to use. */
+export type Transport = "socket" | "bridge";
+
+/**
+ * Transport selection. Defaults to the in-process JS bridge (Motion's
+ * serverless single-device v1) when we're running inside the WKWebView host
+ * (`window.webkit.messageHandlers.motion` present) OR `?transport=bridge` is
+ * set. Otherwise the socket relay (browser + multiplayer v2), so the plain
+ * browser path is unchanged.
+ */
+export const TRANSPORT: Transport = (() => {
+  const forced = params.get("transport");
+  if (forced === "bridge" || forced === "socket") return forced;
+  return hasNativeBridge() ? "bridge" : "socket";
+})();
+
+/** PartyKit host. `?server=` wins, then VITE_PARTY_HOST, then local dev default. */
+export const PARTY_HOST: string =
+  params.get("server") ??
+  (import.meta.env.VITE_PARTY_HOST as string | undefined) ??
+  "http://127.0.0.1:1999";
+
+/** Debug mode: enables keyboard/mouse controller + diagnostics overlay. */
+export const DEBUG: boolean = params.get("debug") === "1";
+
+/** Recording default: opt-in via `?record=1`. Also toggleable in the pairing UI. */
+export const RECORD: boolean = params.get("record") === "1";
+
+/** Optional forced room code (uppercased) for reconnecting to a known room. */
+export const FORCED_ROOM: string | null = (() => {
+  const r = params.get("room");
+  return r ? r.toUpperCase() : null;
+})();
