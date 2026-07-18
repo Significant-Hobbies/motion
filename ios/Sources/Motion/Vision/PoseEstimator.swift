@@ -112,8 +112,17 @@ final class PoseEstimator: @unchecked Sendable {
     /// risks clipping a fast-moving hand out of the box before the next frame.
     private let roiSize: CGFloat = 0.30
 
-    /// Turns each side's ROI hand observation into smoothed openness + fingertip.
+    /// Turns each side's ROI hand observation into smoothed openness + fingertip. This is the
+    /// FALLBACK hand path, used only when MediaPipe can't initialize.
     private let handEstimator = HandPoseEstimator()
+
+    /// PRIMARY hand path: Google MediaPipe `HandLandmarker` (21 3D landmarks/hand), far more
+    /// robust for hand open/close at body distance than Vision's ROI hand pose. When it
+    /// initializes (`isAvailable`), the streamed openness + fingertips come from it and the
+    /// Vision hand ROI pass is skipped entirely. When it can't init (model missing /
+    /// unsupported), we transparently fall back to `handEstimator` above. See
+    /// `HandLandmarkerEstimator` and `computeHands(...)`.
+    private let mediaPipeHands = HandLandmarkerEstimator()
 
     /// Serial queue so smoothing state (`smoothed`) is only touched from one thread.
     private let workQueue = DispatchQueue(label: "com.motion.pose")
@@ -164,7 +173,10 @@ final class PoseEstimator: @unchecked Sendable {
             }
 
             self.lastEmit = now
-            self.buildAndEmit(from: points, handler: handler)
+            // Pass the pixel buffer + frame time through so the MediaPipe hand path can run on
+            // the SAME frame (VIDEO mode needs a monotonic ms timestamp; `now` is our clock).
+            self.buildAndEmit(from: points, handler: handler,
+                              pixelBuffer: pixelBuffer, timestampSeconds: now)
         }
     }
 
@@ -173,7 +185,9 @@ final class PoseEstimator: @unchecked Sendable {
     /// Map Vision's recognized points to the 8 protocol joints, applying coordinate
     /// flip, left/right swap, smoothing, and confidence thresholding.
     private func buildAndEmit(from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint],
-                              handler: VNImageRequestHandler) {
+                              handler: VNImageRequestHandler,
+                              pixelBuffer: CVPixelBuffer,
+                              timestampSeconds: TimeInterval) {
         // Pull a Vision point if it clears the confidence threshold, converting to
         // top-left origin. x is kept as-is (buffer already mirrored); y is flipped.
         func pt(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
@@ -291,7 +305,9 @@ final class PoseEstimator: @unchecked Sendable {
             leftWristConf: confidences[.leftHand],
             rightWrist: outJoints[.rightHand],
             rightWristConf: confidences[.rightHand],
-            handler: handler
+            handler: handler,
+            pixelBuffer: pixelBuffer,
+            timestampSeconds: timestampSeconds
         )
 
         let frame = PoseFrame(joints: outJoints, armJoints: outArms, quality: quality,
@@ -307,8 +323,31 @@ final class PoseEstimator: @unchecked Sendable {
     private func computeHands(
         leftWrist: Point2?, leftWristConf: Double?,
         rightWrist: Point2?, rightWristConf: Double?,
-        handler: VNImageRequestHandler
+        handler: VNImageRequestHandler,
+        pixelBuffer: CVPixelBuffer,
+        timestampSeconds: TimeInterval
     ) -> (HandState?, Fingertips?) {
+        // ── PRIMARY: MediaPipe HandLandmarker ────────────────────────────────────────────────
+        // When MediaPipe is available it OWNS the hand signal: run it on the same frame and
+        // return its openness + fingertips, skipping the Vision ROI hand pass entirely. It only
+        // needs the confidently-detected body wrists (conf > 0) to assign left/right by nearest
+        // wrist; a stale/dropout wrist (conf == 0) is passed as nil so it doesn't mis-assign.
+        if mediaPipeHands.isAvailable {
+            let mpLeftWrist = (leftWristConf ?? 0) > 0 ? leftWrist : nil
+            let mpRightWrist = (rightWristConf ?? 0) > 0 ? rightWrist : nil
+            if let out = mediaPipeHands.analyze(
+                pixelBuffer: pixelBuffer,
+                timestampSeconds: timestampSeconds,
+                leftWrist: mpLeftWrist,
+                rightWrist: mpRightWrist
+            ) {
+                return out
+            }
+            // analyze returned nil only if MediaPipe became unavailable mid-run; fall through
+            // to the Vision path below as a safety net.
+        }
+
+        // ── FALLBACK: Apple Vision ROI hand pose (original path) ─────────────────────────────
         // A wrist is usable for an ROI only if it was actually detected this frame (conf > 0);
         // a value carried over from a dropout (conf == 0) is too stale to crop around.
         let haveLeft = (leftWristConf ?? 0) > 0 && leftWrist != nil
@@ -464,6 +503,7 @@ final class PoseEstimator: @unchecked Sendable {
         smoothed.removeAll()
         smoothedArms.removeAll()
         handEstimator.reset()
+        mediaPipeHands.reset()
         Task { @MainActor in self.delegate?.poseEstimatorDidLoseTracking(self) }
     }
 }

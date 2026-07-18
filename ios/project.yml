@@ -38,6 +38,13 @@ targets:
       # file://). Regenerate with ./scripts/sync-webgame.sh; GameConfig auto-prefers it.
       - path: Resources/webgame
         type: folder
+      # The MediaPipe HandLandmarker model (7.8 MB). Bundled as a flat resource so
+      # `Bundle.main.url(forResource:"hand_landmarker", withExtension:"task")` resolves at
+      # runtime. `buildPhase: resources` forces it into "Copy Bundle Resources" (a .task file
+      # is not a compilable source, but be explicit so it never lands in a Compile Sources
+      # phase). See Vision/HandLandmarkerEstimator.swift for how it's loaded.
+      - path: Resources/mediapipe/hand_landmarker.task
+        buildPhase: resources
     info:
       # XcodeGen GENERATES this plist from the properties below on every `xcodegen
       # generate`, so the keys MUST live here (a hand-edited Info.plist would be

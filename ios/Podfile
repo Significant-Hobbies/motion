@@ -1,0 +1,41 @@
+# Podfile — CocoaPods dependency management for Motion iOS.
+#
+# WHY COCOAPODS (and not SPM): MediaPipe Tasks for iOS (`MediaPipeTasksVision`) is
+# distributed by Google ONLY as a CocoaPods pod — there is no official Swift Package. The
+# rest of the app uses no third-party deps, so this Podfile exists solely to vendor
+# MediaPipe's HandLandmarker for robust hand open/close.
+#
+# BUILD ORDER (important):
+#   1. cd ios && xcodegen generate     # (re)generates Motion.xcodeproj from project.yml
+#   2. pod install                     # produces/refreshes Motion.xcworkspace
+#   3. Build the WORKSPACE, not the project:
+#        xcodebuild -workspace Motion.xcworkspace -scheme Motion ...
+#      Opening/​building Motion.xcodeproj directly will NOT link MediaPipe.
+#
+# Any time project.yml changes you must re-run BOTH `xcodegen generate` AND `pod install`
+# (xcodegen regenerates the .pbxproj, dropping the Pods integration; pod install re-adds it).
+
+platform :ios, '17.0'
+
+# Silence the CocoaPods project-integration warning: we intentionally build the workspace.
+install! 'cocoapods', :warn_for_multiple_pod_sources => false
+
+target 'Motion' do
+  use_frameworks!
+  # MediaPipe Tasks — Vision task bundle. Provides `HandLandmarker`, `HandLandmarkerOptions`,
+  # `MPImage`, VIDEO running mode, etc. Pinned to a minor range so `pod install` is
+  # reproducible while still picking up patch fixes.
+  pod 'MediaPipeTasksVision', '~> 0.10.14'
+end
+
+post_install do |installer|
+  # Keep the Pods targets aligned with the app: iOS 17 deployment, and allow building for
+  # the arm64 simulator (Apple Silicon). MediaPipe ships an xcframework with a simulator
+  # slice, but we normalize the deployment target so CocoaPods' generated pods don't warn
+  # or fall below the app's minimum.
+  installer.pods_project.targets.each do |t|
+    t.build_configurations.each do |config|
+      config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+    end
+  end
+end

@@ -17,19 +17,57 @@ Control Center). The app implements no casting of its own.
 
 - Xcode 16+ (Swift 6 / iOS 17 SDK)
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
+- [CocoaPods](https://cocoapods.org): `brew install cocoapods` (needed for the MediaPipe
+  hand-tracking dependency — see below)
 - A physical iPhone (the simulator has no usable camera; ReplayKit capture also needs a device)
 - For the dev-server loop: the Motion **web** app running on your Mac (see `../web`)
 
 ## Generate & build
 
+The app now depends on **MediaPipe Tasks** (`MediaPipeTasksVision`) for robust hand
+open/close (see "Hand tracking" below). MediaPipe ships only via **CocoaPods**, so the
+build is CocoaPods-integrated: you build the **workspace**, not the bare project.
+
 ```sh
 cd ios
-xcodegen generate
-open Motion.xcodeproj
+xcodegen generate      # regenerates Motion.xcodeproj from project.yml
+pod install            # fetches MediaPipe, produces/refreshes Motion.xcworkspace
+open Motion.xcworkspace # ← open the WORKSPACE, not Motion.xcodeproj
 ```
+
+> **Build order matters.** `xcodegen generate` must run **before** `pod install`:
+> XcodeGen rewrites `Motion.xcodeproj` from scratch (dropping the CocoaPods integration),
+> and `pod install` then re-adds it and (re)creates `Motion.xcworkspace`. Any time you
+> change `project.yml` (or add a source file), re-run **both** commands, in that order.
+
+Command-line builds must target the workspace:
+
+```sh
+xcodebuild -workspace Motion.xcworkspace -scheme Motion \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' \
+  CODE_SIGNING_ALLOWED=NO build
+```
+
+Building `-project Motion.xcodeproj` directly will **not** link MediaPipe and will fail.
 
 In Xcode: select the `Motion` target → **Signing & Capabilities** → set your **Team**
 and (if needed) a unique **Bundle Identifier** (default `com.motion.controller`).
+
+## Hand tracking (MediaPipe HandLandmarker)
+
+Hand open/close and the index-fingertip cursor come from **Google MediaPipe**
+`HandLandmarker` (21 3D landmarks/hand, VIDEO running mode), which is far more robust at
+body distance than Apple Vision's hand pose. Apple **Vision still owns the BODY pose**;
+only the HAND signal is MediaPipe.
+
+- Model: `Resources/mediapipe/hand_landmarker.task` (bundled as an app resource via
+  `project.yml`; loaded at runtime with `Bundle.main.path(forResource:"hand_landmarker",
+  ofType:"task")`).
+- Estimator: `Sources/Motion/Vision/HandLandmarkerEstimator.swift`, driven from
+  `PoseEstimator.computeHands(...)` on the same camera frames Vision uses.
+- **Fallback:** if MediaPipe can't initialize (model missing / unsupported), the app logs
+  it and transparently falls back to the original Vision ROI hand path
+  (`HandPoseEstimator`) — it never crashes and never loses the hand signal.
 
 ## Run (dev-server loop — the default)
 
