@@ -1,8 +1,10 @@
 # Motion — Web (motion-controller SDK + display)
 
 The **web** side turns any browser/TV into a Motion screen. It is split into a
-reusable, game-agnostic **SDK** and a thin **host app** that runs one game
-(*Reach & Dodge*). Plain TypeScript + Canvas 2D (no React, no engine).
+reusable, game-agnostic **SDK** and a thin **host app** that picks a game: the
+phone (bridge transport) and the `?room=MOTION` / `?game=motion-maker` browser
+paths run *Motion Maker* (grab/toss playground); the plain-browser socket default
+runs *Reach & Dodge*. Plain TypeScript + Canvas 2D (no React, no engine).
 Networking via `partysocket`.
 
 ## Layout
@@ -89,9 +91,10 @@ squat — so it works seated at a desk.
   `?game=motion-maker&debug=1`). The **mouse is a hand**; **hold left mouse or
   Space to close the hand** (grab), release to open (drop). Move the mouse once
   to begin.
-- **Grab/release thresholds**: a hand counts as *closed* when openness `< 0.4`
-  and grabs the nearest free object within reach on the open→closed edge; a held
-  object *releases* when the hand opens past `0.6`. One object per hand.
+- **Grab/release thresholds**: a hand counts as *closed* when openness `≤ 0.55`
+  (`GRAB_THRESHOLD`) and grabs the nearest free object within reach on the
+  open→closed edge; a held object *releases* when the hand opens past `0.72`
+  (`RELEASE_THRESHOLD`). One object per hand.
 
 `?game=motion-maker` also selects it without forcing a specific room.
 

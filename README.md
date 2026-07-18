@@ -19,7 +19,10 @@ any TV (AirPlay, Chromecast, or QuickTime to a Mac) to play on the big screen.
 **v1 is deliberately serverless and single-device** — the fastest path to answering
 the only question that matters: *does body-control feel good?* Multiplayer, a
 browser display, Chromecast receivers, and cross-network play are **v2** and already
-have their scaffolding in the repo (parked).
+have their scaffolding in the repo (parked). One live exception: the app can
+optionally *also* stream pose to the PartyKit relay (`AppModel.streamToWebsite`) so
+a browser mirrors your motion — a working preview of the v2 relay path that the
+local game does not depend on.
 
 | | v1 (now) | v2 (parked) |
 |---|---|---|
@@ -34,7 +37,7 @@ have their scaffolding in the repo (parked).
 | Dir         | What                                                                      |
 |-------------|---------------------------------------------------------------------------|
 | `protocol/` | v1 wire/bridge message shapes — single source of truth                    |
-| `web/`      | The game: TypeScript + Vite + Canvas. A reusable **SDK** + `Game` interface; *Reach & Dodge* is one consumer. Runs in a phone WebView (v1) or a browser (v2). |
+| `web/`      | The game: TypeScript + Vite + Canvas. A reusable **SDK** + `Game` interface. The phone (bridge) runs *Motion Maker* (grab/toss playground); *Reach & Dodge* is the plain-browser socket consumer. Runs in a phone WebView (v1) or a browser (v2). |
 | `ios/`      | SwiftUI app: camera, Vision pose, WebView game host, JS pose bridge, ReplayKit recording |
 | `server/`   | PartyKit relay — **parked for v2**                                         |
 | `docs/`     | Decision log / journey                                                     |
@@ -42,14 +45,18 @@ have their scaffolding in the repo (parked).
 ## Try the game right now (no phone, no iOS)
 
 The game is fully playable in a desktop browser with a keyboard/mouse debug
-controller — the quickest way to feel *Reach & Dodge* and iterate on it.
+controller — the quickest way to feel the games and iterate on them.
 
 ```bash
 npm install
 npm --workspace web run dev      # http://localhost:5173
 ```
 
-Open `http://localhost:5173/?debug=1`: **mouse = hands, arrow keys = lean, space = squat.**
+- Open `http://localhost:5173/?debug=1` for **Reach & Dodge** (the plain-browser
+  default): **mouse = hands, arrow keys = lean, space = squat.**
+- Open `http://localhost:5173/?game=motion-maker&debug=1` for **Motion Maker** —
+  the same playground the phone runs: **mouse = a hand, hold left mouse / space =
+  close the hand (grab), release to drop.**
 
 ## Run v1 on your iPhone
 
@@ -77,7 +84,7 @@ MVP POC. See [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) and
 [`docs/decision-log.md`](./docs/decision-log.md). The main product risk is **control
 feel**, not infrastructure — which is exactly why v1 strips out all the servers.
 
-> ⚠️ The iOS app is written but **not yet built on-device** (no Xcode in the build
-> environment). Key things to verify first: that ReplayKit captures the WebView game
-> content, and that the Vision left/right joint mapping matches the player. See the
-> verify list in `PROJECT_STATUS.md`.
+> ⚠️ The iOS app **compiles cleanly for the iOS Simulator** but has **not yet run
+> on a physical device** (the Simulator has no camera). Key things to verify first:
+> that ReplayKit captures the WebView game content, and that the Vision left/right
+> joint mapping matches the player. See the verify list in `PROJECT_STATUS.md`.

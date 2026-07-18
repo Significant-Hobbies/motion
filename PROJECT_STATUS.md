@@ -20,7 +20,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - **XcodeGen** — generates the Xcode project from `ios/project.yml`.
 - **Node ≥20 / npm** + **Vite + TypeScript** — the game (`web/`), served to the phone
   WebView from the Vite dev server (or bundled for a pure app).
-- **PartyKit** (`server/`) — parked; the v2 relay transport.
+- **PartyKit** (`server/`) — the v2 relay transport; also the endpoint the live
+  `streamToWebsite` browser-mirror preview connects to today.
 - A TV/monitor that accepts screen mirroring (any AirPlay/Chromecast target, or a Mac
   via QuickTime).
 
@@ -35,7 +36,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Products
 
-- **Motion v1 POC** — one iPhone, one game (*Reach & Dodge*), mirror to a TV.
+- **Motion v1 POC** — one iPhone, on-phone game (*Motion Maker*, the grab/toss
+  playground the bridge transport runs), mirror to a TV.
 
 ## Features (shipped)
 
@@ -43,15 +45,27 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   recording-transfer messages retained for the v2 relay path.
 - **`web/` — reusable game SDK.** Game-agnostic `sdk/` (room, `BodyController`,
   calibration, readiness, diagnostics, canvas, recording) + a `Game` interface; a game
-  is a drop-in (`createSession({ game })`). *Reach & Dodge* is the first consumer.
-  Two transports: **`bridge`** (v1, in-process, native pushes pose via
-  `window.__motion`) and **`socket`** (v2, PartyKit). Keyboard/mouse debug
-  controller (`?debug=1`) for phone-free playtesting. **Typecheck + build green.**
+  is a drop-in (`createSession({ game })`). Two games ship: **Motion Maker**
+  (grab/toss playground; run whenever the transport is `bridge` — i.e. the phone
+  hosts it — or via `?game=motion-maker` / `?room=MOTION`) and **Reach & Dodge**
+  (timed round; the plain-browser socket default). Two transports: **`bridge`**
+  (v1, in-process, native pushes pose via `window.__motion`) and **`socket`** (v2,
+  PartyKit). Keyboard/mouse debug controller (`?debug=1`) for phone-free
+  playtesting. **Typecheck + build green.**
 - **`ios/` — the v1 app.** Front-camera capture → Vision pose → mirror-corrected,
   smoothed, normalized `Joints`; setup guidance + readiness; 5s calibration; a
   full-screen `WKWebView` game host fed pose over the JS bridge at ≤30 Hz; ReplayKit
   screen recording (game + camera inset → one video → Photos). On-device only.
-- **`server/`** — PartyKit relay, **parked for v2**; kept typecheck-green.
+- **Live "stream to website" path** — `AppModel.streamToWebsite` (a UI toggle)
+  opens a `RoomSocket` to the PartyKit relay and streams every pose (with hands)
+  to `ws://<devServerIP>:1999/parties/main/<roomCode>`, so a browser display
+  mirrors the phone's motion live. Runs independently of and in addition to the
+  local WKWebView game (streams straight from `setup`, not gated on full-body
+  `.ok`). A working preview of the v2 relay path, wired today; the local game
+  does not depend on it.
+- **`server/`** — PartyKit relay. The v2 browser/multiplayer transport (kept
+  typecheck-green); also the endpoint the live `streamToWebsite` preview connects
+  to today.
 - **Self-contained app** — the web build is bundled into the app
   (`ios/Resources/webgame`, refreshed by `scripts/sync-webgame.sh`); `GameConfig`
   auto-prefers it, so the app runs on a phone with **no dev server / Mac network**.
@@ -81,7 +95,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - Run on a physical iPhone (plug in device, set signing team) and clear the
   device-only verify list. The Simulator build already passes.
 - Playtest **control feel** with the keyboard-debug controller and on-device; tune
-  smoothing / target size / obstacle speed until a 90s round is fun.
+  smoothing / grab-reach / release thresholds until grabbing and tossing objects in
+  Motion Maker feels good (and, for Reach & Dodge, target size / obstacle speed).
 - ~~Bundle `web/dist` into the app for a self-contained "pure app"~~ — done.
 - ~~Create the personal GitHub repo and push~~ — done (github.com/sarthakagrawal927/motion, private).
 

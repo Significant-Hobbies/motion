@@ -1,9 +1,11 @@
 # motion-server
 
-> **⚠️ Parked — not used in v1.** v1 is a serverless single-device POC (the game
+> **⚠️ Not on the v1 game path.** v1 is a serverless single-device POC (the game
 > runs on the phone and is screen-mirrored to a TV; see `../docs/decision-log.md`).
 > This relay is the **v2** path for the browser/Chromecast display and multiplayer.
-> It's kept green and ready but nothing in v1 connects to it.
+> It's kept green and ready; the v1 game loop doesn't connect to it, but the app's
+> optional `AppModel.streamToWebsite` toggle *does* stream pose here today so a
+> browser can mirror the phone (a live preview of v2).
 
 The Motion relay: a dumb [PartyKit](https://partykit.io) room that connects one
 browser **display** to one iPhone **controller**. It holds no game state — it tags

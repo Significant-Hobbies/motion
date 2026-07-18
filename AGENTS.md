@@ -5,11 +5,23 @@ these project rules.
 
 ## Architecture in one breath
 
-Phone (`ios/`, Vision pose) → relay room (`server/`, PartyKit) → browser
-(`web/`, Canvas game). The **browser owns all game state**; the server is a dumb
-relay; the phone sends input, never decisions. `protocol/protocol.ts` is the
-single source of truth for the wire format — change it there first, then mirror
-into `ios/Sources/Motion/Net/Protocol.swift` and bump `PROTOCOL_VERSION`.
+**v1 (shipped) is serverless and single-device.** The phone (`ios/`, Vision pose)
+hosts the web game (`web/`, Canvas) inside a full-screen `WKWebView` and injects
+pose **in-process via a JS bridge** (`ios/.../Game/PoseBridge.swift` ↔
+`web/src/sdk/bridge.ts`) — no relay, no WebSocket, no pairing. The phone runs
+*Motion Maker* (the on-phone game selected whenever the transport is `bridge`);
+you screen-mirror the phone to a TV. The **web owns all game state**; the phone
+sends input, never decisions.
+
+**v2 (parked, kept green) is the browser/multiplayer relay path**: phone →
+`server/` (PartyKit) → browser display, running *Reach & Dodge* on the `socket`
+transport. One live exception today: `AppModel.streamToWebsite` optionally streams
+pose to that relay so a browser mirrors the phone — a preview of v2 the local game
+doesn't depend on.
+
+`protocol/protocol.ts` is the single source of truth for the wire format — change
+it there first, then mirror into `ios/Sources/Motion/Net/Protocol.swift` and bump
+`PROTOCOL_VERSION`. See `docs/architecture/how-it-works.md` for the full walkthrough.
 
 ## Build order (do not skip ahead)
 
@@ -42,9 +54,11 @@ before the single-player game is demonstrably enjoyable. The product risk is
 ```bash
 npm install
 npm run dev            # relay :1999 + web :5173
-# open http://localhost:5173/?debug=1  → mouse=hands, arrows=lean, space=squat
+# Reach & Dodge:  http://localhost:5173/?debug=1  → mouse=hands, arrows=lean, space=squat
+# Motion Maker:   http://localhost:5173/?game=motion-maker&debug=1  → mouse=a hand, hold left mouse/space=grab
 npm run typecheck
 ```
 
-iOS builds only on a Mac with Xcode 16+ against a physical device
-(`cd ios && xcodegen generate`).
+iOS builds only on a Mac with Xcode 16+ (`cd ios && xcodegen generate`). It
+**compiles for the iOS Simulator**; camera + ReplayKit paths still need a
+**physical device** to verify (see `PROJECT_STATUS.md`).
