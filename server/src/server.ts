@@ -63,17 +63,15 @@ export default class MotionServer implements Party.Server {
 
   onClose(conn: Party.Connection<ConnState>) {
     this.rate.delete(conn.id);
-    const role = conn.state?.role;
-    if (!role) return; // never finished joining — nothing to announce.
-    // Tell the OTHER side that this peer (role) dropped.
-    this.announcePeer(role, false, conn.id);
+    if (!conn.state?.role) return; // never finished joining.
+    // Re-broadcast authoritative presence, excluding the connection that's leaving.
+    this.syncPresence(conn.id);
   }
 
   onError(conn: Party.Connection<ConnState>, _err: Error) {
     // Treat a transport error like a close for presence purposes.
     this.rate.delete(conn.id);
-    const role = conn.state?.role;
-    if (role) this.announcePeer(role, false, conn.id);
+    if (conn.state?.role) this.syncPresence(conn.id);
   }
 
   // ── Message handling ─────────────────────────────────────────────────────────
@@ -206,17 +204,31 @@ export default class MotionServer implements Party.Server {
     conn.setState({ role });
     console.log(`[${this.room.id}] JOINED ${role}  (conns now: ${[...this.room.getConnections()].length})`);
 
-    // Presence bootstrap: tell the NEW joiner which peers are already present so
-    // it can render peer status immediately…
-    for (const other of ROLES) {
-      if (other === role) continue;
-      if (this.roleTaken(other, conn.id)) {
-        this.sendTo(conn, peerMsg(other, true));
-      }
-    }
+    // Broadcast authoritative presence to BOTH roles. Every side gets the TRUE current
+    // state (not an incremental event that can be missed during reconnect churn), so the
+    // phone and the laptop always agree on whether their peer is connected.
+    this.syncPresence();
+  }
 
-    // …and tell the OTHER role that this peer just arrived.
-    this.announcePeer(role, true, conn.id);
+  /**
+   * Send every connected client the current presence of its counterpart role. This is
+   * the single source of truth for peer status — called on every join/close/evict so
+   * the two sides never disagree. `excludeId` drops a connection that is mid-close.
+   */
+  private syncPresence(excludeId = "") {
+    let hasDisplay = false;
+    let hasController = false;
+    for (const c of this.room.getConnections<ConnState>()) {
+      if (c.id === excludeId) continue;
+      if (c.state?.role === "display") hasDisplay = true;
+      else if (c.state?.role === "controller") hasController = true;
+    }
+    for (const c of this.room.getConnections<ConnState>()) {
+      if (c.id === excludeId) continue;
+      const r = c.state?.role;
+      if (r === "display") this.safeSend(c, JSON.stringify(peerMsg("controller", hasController)));
+      else if (r === "controller") this.safeSend(c, JSON.stringify(peerMsg("display", hasDisplay)));
+    }
   }
 
   // Dev diagnostic: count poses and log throttled so we can confirm, from the
@@ -269,20 +281,6 @@ export default class MotionServer implements Party.Server {
   private relayTo(role: Role, payload: string) {
     for (const c of this.room.getConnections<ConnState>()) {
       if (c.state?.role === role) this.safeSend(c, payload);
-    }
-  }
-
-  /**
-   * Announce that the connection of `subjectRole` connected/disconnected. We tell
-   * the OTHER role (its peer), since that is the side whose peer-presence changed.
-   * PartyKit has no "send to role", so we iterate connections.
-   */
-  private announcePeer(subjectRole: Role, connected: boolean, changedId: string) {
-    const audience = otherRole(subjectRole);
-    const message = JSON.stringify(peerMsg(subjectRole, connected));
-    for (const c of this.room.getConnections<ConnState>()) {
-      if (c.id === changedId) continue; // don't tell the subject about itself.
-      if (c.state?.role === audience) this.safeSend(c, message);
     }
   }
 

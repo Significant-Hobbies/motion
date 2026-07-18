@@ -148,9 +148,12 @@ struct SetupView: View {
     }
 
     private var streamStatusColor: Color {
+        // GREEN means the end-to-end link is up — i.e. the laptop peer is actually
+        // connected. Relay-connected-but-no-laptop is amber ("waiting"), so the phone
+        // never shows green while the laptop shows nothing. Keeps the two coherent.
         if model.peerConnected { return .green }
         switch model.streamConnection {
-        case .connected: return .green
+        case .connected: return .yellow   // on the relay, but the laptop isn't here yet
         case .connecting, .reconnecting: return .yellow
         case .failed: return .red
         case .idle: return .gray
