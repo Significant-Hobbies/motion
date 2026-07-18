@@ -218,10 +218,24 @@ export default class MotionServer implements Party.Server {
 
   // ── Relay + presence helpers ─────────────────────────────────────────────────
 
+  /**
+   * Send that never throws. A peer can close between our `getConnections` snapshot
+   * and the `send`, and PartyKit throws "Can't call send() after close()". During
+   * reconnect churn that error would otherwise escape a message handler and disrupt
+   * the room, so we swallow it — a dropped frame on a dying socket is harmless.
+   */
+  private safeSend(conn: Party.Connection<ConnState>, payload: string) {
+    try {
+      conn.send(payload);
+    } catch {
+      // socket already closed / closing — ignore.
+    }
+  }
+
   /** Send a raw (already-serialized) payload to every connection of a role. */
   private relayTo(role: Role, payload: string) {
     for (const c of this.room.getConnections<ConnState>()) {
-      if (c.state?.role === role) c.send(payload);
+      if (c.state?.role === role) this.safeSend(c, payload);
     }
   }
 
@@ -235,12 +249,12 @@ export default class MotionServer implements Party.Server {
     const message = JSON.stringify(peerMsg(subjectRole, connected));
     for (const c of this.room.getConnections<ConnState>()) {
       if (c.id === changedId) continue; // don't tell the subject about itself.
-      if (c.state?.role === audience) c.send(message);
+      if (c.state?.role === audience) this.safeSend(c, message);
     }
   }
 
   private sendTo(conn: Party.Connection<ConnState>, msg: ServerMessage) {
-    conn.send(JSON.stringify(msg));
+    this.safeSend(conn, JSON.stringify(msg));
   }
 
   private sendError(

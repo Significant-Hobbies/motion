@@ -71,7 +71,9 @@ targets:
         # Default signing: Sarthak Agrawal's personal (free) Apple ID team, so the
         # project builds to a device without picking a team each time. Automatic
         # signing lets the free team mint the provisioning profile.
-        DEVELOPMENT_TEAM: H77425A5P9
+        # NOTE: this is the TEAM ID (the signing cert's OU), not the name-suffix in
+        # the cert's common name.
+        DEVELOPMENT_TEAM: 8F7LXHTJZR
         CODE_SIGN_STYLE: Automatic
     # System frameworks. AVFoundation + Vision + SwiftUI are weak-implicit via import,
     # but we link them explicitly for clarity. No SPM dependencies are required.
