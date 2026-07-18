@@ -30,6 +30,10 @@ import Vision
 struct PoseFrame: Sendable {
     /// Mirror-corrected, top-left-origin joints keyed by protocol name. Missing joints absent.
     let joints: [JointName: Point2]
+    /// Optional arm-chain joints (shoulders + elbows), same coordinate convention as `joints`
+    /// (mirror-corrected, top-left origin, swapped left/right). A joint below confidence is
+    /// simply absent from this map so the packet omits it rather than sending garbage.
+    let armJoints: [ArmJointName: Point2]
     /// Aggregate confidence 0..1 across the joints we found.
     let quality: Double
     /// Per-joint confidence (post-threshold) for the setup evaluator / overlay dimming.
@@ -76,6 +80,8 @@ final class PoseEstimator: @unchecked Sendable {
     private let workQueue = DispatchQueue(label: "com.motion.pose")
     /// Previous smoothed joints, for the exponential filter.
     private var smoothed: [JointName: Point2] = [:]
+    /// Previous smoothed arm-chain joints (shoulders + elbows), same filter as `smoothed`.
+    private var smoothedArms: [ArmJointName: Point2] = [:]
 
     init() {
         request = VNDetectHumanBodyPoseRequest()
@@ -165,6 +171,16 @@ final class PoseEstimator: @unchecked Sendable {
         raw[.rightFoot] = pt(.leftAnkle)
         raw[.leftFoot]  = pt(.rightAnkle)
 
+        // ARM CHAIN (shoulders + elbows) — OPTIONAL. SWAPPED exactly like hands/knees/feet
+        // above: the mirrored buffer flips visual sides, so Vision's LEFT is the player's
+        // RIGHT. Same y-flip and confidence threshold (via `pt`). Below-threshold joints
+        // stay absent here, so the packet omits them rather than sending garbage.
+        var rawArms: [ArmJointName: (Point2, Double)] = [:]
+        rawArms[.rightShoulder] = pt(.leftShoulder)
+        rawArms[.leftShoulder]  = pt(.rightShoulder)
+        rawArms[.rightElbow]    = pt(.leftElbow)
+        rawArms[.leftElbow]     = pt(.rightElbow)
+
         // Nothing usable this frame.
         guard !raw.isEmpty else { emitLost(); return }
 
@@ -196,6 +212,30 @@ final class PoseEstimator: @unchecked Sendable {
         let quality = confidences.values.isEmpty ? 0
             : confidences.values.reduce(0, +) / Double(JointName.allCases.count)
 
+        // Arm-chain smoothing — same exponential filter (`a`) as the required joints above.
+        // A joint present this frame is smoothed against its previous value (or adopts the
+        // new value if fresh); a joint absent this frame reuses its last smoothed value so a
+        // brief dropout doesn't make the arm snap. A joint never seen stays absent (omitted).
+        var outArms: [ArmJointName: Point2] = [:]
+        for name in ArmJointName.allCases {
+            if let (p, _) = rawArms[name] {
+                if let prev = smoothedArms[name] {
+                    let sx = a * p[0] + (1 - a) * prev[0]
+                    let sy = a * p[1] + (1 - a) * prev[1]
+                    outArms[name] = [sx, sy]
+                    smoothedArms[name] = [sx, sy]
+                } else {
+                    outArms[name] = p
+                    smoothedArms[name] = p
+                }
+            } else if let prev = smoothedArms[name] {
+                // Missing this frame: reuse last known position (kept in sync with the
+                // required-joint dropout behavior above). Not fabricated from nothing.
+                outArms[name] = prev
+            }
+            // else: never detected → leave absent so the packet omits this arm joint.
+        }
+
         // Hand open/close from the SAME frame. Assign detected hands to the player's
         // left/right by nearest body wrist (the swapped, mirror-corrected joints above),
         // so `HandState.left`/`.right` line up with `joints.leftHand`/`rightHand`. Only
@@ -206,7 +246,7 @@ final class PoseEstimator: @unchecked Sendable {
                                       leftBodyHand: outJoints[.leftHand],
                                       rightBodyHand: outJoints[.rightHand])
 
-        let frame = PoseFrame(joints: outJoints, quality: quality,
+        let frame = PoseFrame(joints: outJoints, armJoints: outArms, quality: quality,
                               confidences: confidences, hands: hands)
         Task { @MainActor in self.delegate?.poseEstimator(self, didProduce: frame) }
     }
@@ -214,6 +254,7 @@ final class PoseEstimator: @unchecked Sendable {
     private func emitLost() {
         // Decay smoothing state so a fresh detection doesn't lerp from a stale pose.
         smoothed.removeAll()
+        smoothedArms.removeAll()
         handEstimator.reset()
         Task { @MainActor in self.delegate?.poseEstimatorDidLoseTracking(self) }
     }

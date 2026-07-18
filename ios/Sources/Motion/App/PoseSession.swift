@@ -93,7 +93,7 @@ extension PoseSession: PoseEstimatorDelegate {
     func poseEstimator(_ estimator: PoseEstimator, didProduce frame: PoseFrame) {
         let verdict = evaluator.evaluate(frame: frame)
         model.ingest(
-            joints: Joints(from: frame.joints),
+            joints: Joints(from: frame.joints, arms: frame.armJoints),
             quality: frame.quality,
             tracking: verdict.tracking,
             guidance: verdict.guidance,

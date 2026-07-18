@@ -25,9 +25,16 @@ export interface Joints {
   rightKnee: [number, number];
   leftFoot: [number, number];
   rightFoot: [number, number];
+  // Arm chain (added v1.1, OPTIONAL for back-compat): shoulders + elbows so the
+  // avatar can draw shoulder→elbow→hand with a real bend instead of a straight/
+  // derived line. Absent = fall back to a derived shoulder + straight arm.
+  leftShoulder?: [number, number];
+  rightShoulder?: [number, number];
+  leftElbow?: [number, number];
+  rightElbow?: [number, number];
 }
 
-/** Every joint name, handy for iteration/validation. */
+/** The REQUIRED joints — used for packet validation (present in every version). */
 export const JOINT_NAMES: (keyof Joints)[] = [
   "head",
   "leftHand",
@@ -37,6 +44,14 @@ export const JOINT_NAMES: (keyof Joints)[] = [
   "rightKnee",
   "leftFoot",
   "rightFoot",
+];
+
+/** Optional arm-chain joints (v1.1+). Smoothed/rendered when present. */
+export const ARM_JOINT_NAMES: (keyof Joints)[] = [
+  "leftShoulder",
+  "rightShoulder",
+  "leftElbow",
+  "rightElbow",
 ];
 
 /** Reason the controller has paused sending usable input. */

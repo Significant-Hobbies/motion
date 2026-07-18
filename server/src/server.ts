@@ -184,13 +184,22 @@ export default class MotionServer implements Party.Server {
       return;
     }
 
-    // Enforce one connection per role. If the slot is already taken by another
-    // live connection, reject this one.
+    // One connection per role. If the slot is taken:
+    //  • controller → LAST-WINS: a reconnecting phone whose old socket hasn't timed
+    //    out yet should reclaim the slot immediately (fixes flaky reconnects). Evict
+    //    the stale one. There's only ever one phone, so no eviction war.
+    //  • display → reject the extra (e.g. a duplicate browser tab), so two live tabs
+    //    don't endlessly evict each other.
     if (this.roleTaken(role, conn.id)) {
-      console.log(`[${this.room.id}] REJECTED ${role} (room_full — a ${role} is already here)`);
-      this.sendError(conn, "room_full", `A ${role} is already connected to this room.`);
-      conn.close();
-      return;
+      if (role === "controller") {
+        console.log(`[${this.room.id}] controller reconnect — evicting stale controller`);
+        this.evictRole("controller", conn.id);
+      } else {
+        console.log(`[${this.room.id}] REJECTED ${role} (room_full — a ${role} is already here)`);
+        this.sendError(conn, "room_full", `A ${role} is already connected to this room.`);
+        conn.close();
+        return;
+      }
     }
 
     // Tag the connection with its role — this is what marks it "joined".
@@ -230,6 +239,14 @@ export default class MotionServer implements Party.Server {
       if (c.state?.role === role) return true;
     }
     return false;
+  }
+
+  /** Close every OTHER connection holding `role` (last-connection-wins). */
+  private evictRole(role: Role, exceptId: string) {
+    for (const c of this.room.getConnections<ConnState>()) {
+      if (c.id === exceptId) continue;
+      if (c.state?.role === role) c.close(1000, "replaced by a newer connection");
+    }
   }
 
   // ── Relay + presence helpers ─────────────────────────────────────────────────

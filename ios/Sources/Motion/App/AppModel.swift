@@ -23,6 +23,9 @@
 
 import Foundation
 import Observation
+#if canImport(UIKit)
+import UIKit
+#endif
 
 /// High-level screen the app should show. Drives `ContentView` routing.
 enum Phase: Sendable, Equatable {
@@ -216,6 +219,13 @@ final class AppModel {
         socket.delegate = self
         roomSocket = socket
         socket.connect()
+
+        // Keep the screen awake while streaming: auto-lock (or the display sleeping) would
+        // background the app and drop the relay socket. This does NOT stop iOS suspending a
+        // fully-backgrounded app, but it prevents the common idle auto-lock disconnect.
+        #if canImport(UIKit)
+        UIApplication.shared.isIdleTimerDisabled = true
+        #endif
     }
 
     /// Tear down the relay socket and reset streaming UI state. Safe to call when idle.
@@ -224,6 +234,12 @@ final class AppModel {
         roomSocket = nil
         peerConnected = false
         streamConnection = .idle
+
+        // Re-enable auto-lock now that we're no longer streaming, so the phone can sleep
+        // normally when idle. Paired with the enable in `startStreaming()`.
+        #if canImport(UIKit)
+        UIApplication.shared.isIdleTimerDisabled = false
+        #endif
     }
 }
 

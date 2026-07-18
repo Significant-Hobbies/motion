@@ -7,6 +7,7 @@
 // game loop stays simple and responsive.
 
 import {
+  ARM_JOINT_NAMES,
   JOINT_NAMES,
   type Joints,
   type PosePacket,
@@ -58,6 +59,13 @@ export const REQUIRED_JOINTS: (keyof Joints)[] = [
 const STALE_MS = 400;
 /** Exponential smoothing factor per received packet (higher = snappier). */
 const SMOOTH_ALPHA = 0.5;
+/**
+ * How many consecutive packets an OPTIONAL arm joint may be absent before we drop
+ * it back to undefined. Vision occasionally omits a joint for a frame or two;
+ * holding the last smoothed value briefly avoids a flicker between the real bent
+ * arm and the derived fallback, without fabricating a joint that's truly gone.
+ */
+const ARM_ABSENCE_GRACE = 5;
 
 function lerpPoint(a: [number, number], b: Vec2, t: number): [number, number] {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
@@ -107,6 +115,12 @@ export abstract class PoseControllerBase implements BodyController {
   private rawQuality = 0;
   private nowMs = 0;
 
+  // Per-optional-arm-joint absence counter. 0 = present this packet; once it
+  // exceeds ARM_ABSENCE_GRACE the joint is cleared to undefined on `joints`.
+  private armAbsent: Record<string, number> = Object.fromEntries(
+    ARM_JOINT_NAMES.map((n) => [n, ARM_ABSENCE_GRACE + 1]),
+  );
+
   // Standing torso-Y baseline captured once when the first good pose arrives.
   private standTorsoY: number | null = null;
 
@@ -117,11 +131,38 @@ export abstract class PoseControllerBase implements BodyController {
     this.lastRecvMs = this.nowMs;
     this.rawQuality = clamp01(p.quality);
 
-    // Smooth each joint toward the incoming target.
+    // Smooth each required joint toward the incoming target. Required joints are
+    // always present on both `this.joints` and the packet (validated upstream).
     const next = {} as Joints;
     for (const name of JOINT_NAMES) {
-      next[name] = lerpPoint(this.joints[name], p.joints[name], SMOOTH_ALPHA);
+      const cur = this.joints[name] as [number, number];
+      const target = p.joints[name] as [number, number];
+      next[name] = lerpPoint(cur, target, SMOOTH_ALPHA);
     }
+
+    // Smooth the OPTIONAL arm joints when the packet includes them. If a packet
+    // omits one (undefined), don't fabricate it: hold the last smoothed value
+    // for a short grace window (Vision may drop a joint for a frame), then clear
+    // to undefined so renderers fall back to the derived arm.
+    for (const name of ARM_JOINT_NAMES) {
+      const incoming = p.joints[name];
+      if (incoming) {
+        const prev = this.joints[name];
+        next[name] = prev
+          ? lerpPoint(prev, incoming, SMOOTH_ALPHA)
+          : [incoming[0], incoming[1]];
+        this.armAbsent[name] = 0;
+      } else {
+        this.armAbsent[name] = (this.armAbsent[name] ?? 0) + 1;
+        // Within grace: keep holding the last smoothed value. Past it: drop
+        // (leave `next[name]` undefined) so renderers fall back.
+        if ((this.armAbsent[name] ?? 0) <= ARM_ABSENCE_GRACE) {
+          const held = this.joints[name];
+          if (held) next[name] = held;
+        }
+      }
+    }
+
     this.joints = next;
 
     // Smooth hand openness. Absent `hands` → treat as fully open (1) so a packet
@@ -191,7 +232,7 @@ export abstract class PoseControllerBase implements BodyController {
   private checkRequired(): boolean {
     if (this.lastRecvMs === -Infinity) return false;
     for (const name of REQUIRED_JOINTS) {
-      const [x, y] = this.joints[name];
+      const [x, y] = this.joints[name] as [number, number];
       if (!Number.isFinite(x) || !Number.isFinite(y)) return false;
       if (x < -0.05 || x > 1.05 || y < -0.05 || y > 1.05) return false;
     }

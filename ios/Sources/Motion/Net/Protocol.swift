@@ -57,7 +57,8 @@ enum TrackingState: String, Codable, Sendable, CaseIterable {
 
 // MARK: - Joints
 
-/// The eight protocol joints, in the canonical iteration order (mirrors `JOINT_NAMES`).
+/// The eight REQUIRED protocol joints, in the canonical iteration order (mirrors
+/// `JOINT_NAMES`). These drive quality math, validation, the overlay, and smoothing.
 enum JointName: String, Codable, Sendable, CaseIterable {
     case head
     case leftHand
@@ -67,6 +68,17 @@ enum JointName: String, Codable, Sendable, CaseIterable {
     case rightKnee
     case leftFoot
     case rightFoot
+}
+
+/// The four OPTIONAL arm-chain joints (v1.1+, mirrors `ARM_JOINT_NAMES`): shoulders +
+/// elbows so the avatar can draw shoulder→elbow→hand with a real bend. Kept separate from
+/// `JointName` so they never pollute the required-joint quality math / `[0,0]` fallbacks —
+/// each is emitted only when present, and omitted from the JSON entirely when absent.
+enum ArmJointName: String, Codable, Sendable, CaseIterable {
+    case leftShoulder
+    case rightShoulder
+    case leftElbow
+    case rightElbow
 }
 
 /// A single normalized, mirror-corrected joint: `[x, y]` in 0..1, origin top-left.
@@ -84,8 +96,18 @@ struct Joints: Codable, Sendable {
     var leftFoot: Point2
     var rightFoot: Point2
 
-    /// Build from a keyed dictionary; any missing joint falls back to `[0, 0]`.
-    init(from map: [JointName: Point2]) {
+    /// Optional arm-chain joints (v1.1+). `nil` = not detected this frame; because they are
+    /// optional, `JSONEncoder` OMITS them from the JSON entirely when absent — matching the
+    /// TS optional fields `leftShoulder?`/`rightShoulder?`/`leftElbow?`/`rightElbow?` so old
+    /// and new relays/displays both accept the packet. Default `nil` keeps them omitted.
+    var leftShoulder: Point2?
+    var rightShoulder: Point2?
+    var leftElbow: Point2?
+    var rightElbow: Point2?
+
+    /// Build from the required-joint map (missing required joint → `[0, 0]`) plus an
+    /// OPTIONAL arm-joint map (missing arm joint → left `nil`, i.e. omitted from JSON).
+    init(from map: [JointName: Point2], arms: [ArmJointName: Point2] = [:]) {
         func p(_ n: JointName) -> Point2 { map[n] ?? [0, 0] }
         head = p(.head)
         leftHand = p(.leftHand)
@@ -95,6 +117,11 @@ struct Joints: Codable, Sendable {
         rightKnee = p(.rightKnee)
         leftFoot = p(.leftFoot)
         rightFoot = p(.rightFoot)
+        // Arm joints are left nil (omitted) when absent — never fabricated to [0, 0].
+        leftShoulder = arms[.leftShoulder]
+        rightShoulder = arms[.rightShoulder]
+        leftElbow = arms[.leftElbow]
+        rightElbow = arms[.rightElbow]
     }
 
     /// Keyed view, handy for the preview overlay and calibration math.

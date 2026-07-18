@@ -354,12 +354,17 @@ export class MotionMaker implements Game {
     const [lhX, lhY] = r.toPx(j.leftHand[0], j.leftHand[1]);
     const [rhX, rhY] = r.toPx(j.rightHand[0], j.rightHand[1]);
 
-    // Shoulders: derived from head/torso so we get readable arms without needing
-    // extra joints. Offset horizontally from the neck line.
-    const shoulderY = headY + (torsoY - headY) * 0.42;
+    // Shoulders: prefer the REAL tracked shoulder joints when present (smoother,
+    // anatomically correct). Fall back to a head/torso-derived shoulder — offset
+    // horizontally from the neck line — for mouse debug or when Vision drops them.
+    const derivedShoulderY = headY + (torsoY - headY) * 0.42;
     const shoulderDx = r.sx(0.07);
-    const lShoulder: [number, number] = [torsoX - shoulderDx, shoulderY];
-    const rShoulder: [number, number] = [torsoX + shoulderDx, shoulderY];
+    const lShoulder: [number, number] = j.leftShoulder
+      ? r.toPx(j.leftShoulder[0], j.leftShoulder[1])
+      : [torsoX - shoulderDx, derivedShoulderY];
+    const rShoulder: [number, number] = j.rightShoulder
+      ? r.toPx(j.rightShoulder[0], j.rightShoulder[1])
+      : [torsoX + shoulderDx, derivedShoulderY];
 
     ctx.save();
     ctx.lineCap = "round";
@@ -380,17 +385,60 @@ export class MotionMaker implements Game {
     ctx.lineTo(rShoulder[0], rShoulder[1]);
     ctx.stroke();
 
-    // Arms (shoulder → hand). Elbow implied by a gentle bend toward the torso.
-    for (const [sh, hand] of [
-      [lShoulder, [lhX, lhY]],
-      [rShoulder, [rhX, rhY]],
-    ] as const) {
-      const ex = (sh[0] + hand[0]) / 2;
-      const ey = (sh[1] + hand[1]) / 2 + r.sy(0.03);
+    // Arms. When the real shoulder + elbow are present, draw a true bent chain
+    // shoulder→elbow→hand (much smoother than a derived curve). Otherwise fall
+    // back to the derived-shoulder curved arm with a gentle bend toward torso.
+    const arms: {
+      shoulder: [number, number];
+      elbow: [number, number] | undefined;
+      hand: [number, number];
+    }[] = [
+      {
+        shoulder: lShoulder,
+        elbow:
+          j.leftShoulder && j.leftElbow
+            ? r.toPx(j.leftElbow[0], j.leftElbow[1])
+            : undefined,
+        hand: [lhX, lhY],
+      },
+      {
+        shoulder: rShoulder,
+        elbow:
+          j.rightShoulder && j.rightElbow
+            ? r.toPx(j.rightElbow[0], j.rightElbow[1])
+            : undefined,
+        hand: [rhX, rhY],
+      },
+    ];
+    for (const { shoulder: sh, elbow, hand } of arms) {
       ctx.beginPath();
       ctx.moveTo(sh[0], sh[1]);
-      ctx.quadraticCurveTo(ex, ey, hand[0], hand[1]);
+      if (elbow) {
+        // Real bend: two rounded segments through the elbow.
+        ctx.lineTo(elbow[0], elbow[1]);
+        ctx.lineTo(hand[0], hand[1]);
+      } else {
+        // Derived arm: single curve with an implied elbow.
+        const ex = (sh[0] + hand[0]) / 2;
+        const ey = (sh[1] + hand[1]) / 2 + r.sy(0.03);
+        ctx.quadraticCurveTo(ex, ey, hand[0], hand[1]);
+      }
       ctx.stroke();
+      // Rounded elbow joint dot when we have a real bend.
+      if (elbow) {
+        ctx.fillStyle = "#f4f7ff";
+        ctx.beginPath();
+        ctx.arc(elbow[0], elbow[1], Math.max(4, r.sx(0.012)), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Rounded shoulder joint dots (also anchor the derived shoulder line ends).
+    ctx.fillStyle = "#f4f7ff";
+    for (const sh of [lShoulder, rShoulder]) {
+      ctx.beginPath();
+      ctx.arc(sh[0], sh[1], Math.max(4, r.sx(0.012)), 0, Math.PI * 2);
+      ctx.fill();
     }
 
     // Head.
