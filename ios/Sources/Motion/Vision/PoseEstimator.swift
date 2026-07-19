@@ -82,6 +82,13 @@ final class PoseEstimator: @unchecked Sendable {
     /// Points below this confidence are treated as missing.
     var confidenceThreshold: Float = 0.3
 
+    /// Lower threshold for the OPTIONAL arm-chain joints (shoulders + elbows). Vision
+    /// scores elbows well below wrists at body distance, so gating them at the full
+    /// `confidenceThreshold` drops them and the avatar's arms render as straight sticks
+    /// (no bend). These joints are purely cosmetic (they only refine the drawn arm and
+    /// the sword's aim), so a looser gate is safe — a slightly noisy elbow beats none.
+    var armConfidenceThreshold: Float = 0.12
+
     /// Exponential smoothing factor: new = a*current + (1-a)*previous. Higher = snappier.
     var smoothing: Double = 0.5
 
@@ -197,6 +204,16 @@ final class PoseEstimator: @unchecked Sendable {
             return ([x, y], Double(p.confidence))
         }
 
+        // Same conversion as `pt`, but gated at the looser `armConfidenceThreshold` — used
+        // ONLY for the optional arm-chain (shoulders + elbows) so they survive to draw a
+        // bent arm even when Vision is only ~0.15 confident about the elbow.
+        func ptArm(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
+            guard let p = points[name], p.confidence >= armConfidenceThreshold else { return nil }
+            let x = Double(p.location.x)
+            let y = 1.0 - Double(p.location.y)
+            return ([x, y], Double(p.confidence))
+        }
+
         /// Midpoint of two optional points (needs both). Confidence = min of the two.
         func mid(_ a: (Point2, Double)?, _ b: (Point2, Double)?) -> (Point2, Double)? {
             guard let a, let b else { return nil }
@@ -233,10 +250,10 @@ final class PoseEstimator: @unchecked Sendable {
         // RIGHT. Same y-flip and confidence threshold (via `pt`). Below-threshold joints
         // stay absent here, so the packet omits them rather than sending garbage.
         var rawArms: [ArmJointName: (Point2, Double)] = [:]
-        rawArms[.rightShoulder] = pt(.leftShoulder)
-        rawArms[.leftShoulder]  = pt(.rightShoulder)
-        rawArms[.rightElbow]    = pt(.leftElbow)
-        rawArms[.leftElbow]     = pt(.rightElbow)
+        rawArms[.rightShoulder] = ptArm(.leftShoulder)
+        rawArms[.leftShoulder]  = ptArm(.rightShoulder)
+        rawArms[.rightElbow]    = ptArm(.leftElbow)
+        rawArms[.leftElbow]     = ptArm(.rightElbow)
 
         // Nothing usable this frame.
         guard !raw.isEmpty else { emitLost(); return }

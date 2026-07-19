@@ -190,6 +190,9 @@ export class GameHost {
   private last = performance.now();
   private rafId = 0;
   private stopped = false;
+  /** Last frame's uncaught error (message + stack), surfaced by `drawDiag`. */
+  private lastError: string | null = null;
+  private lastErrorStack = "";
   /** True once the `ready` event has been emitted web → native. */
   private readyEmitted = false;
 
@@ -433,23 +436,83 @@ export class GameHost {
 
   private frame = (now: number): void => {
     if (this.stopped) return;
-    const dtWallMs = Math.min(100, now - this.last);
-    this.last = now;
+    // CRASH-PROOF: a throw anywhere in step/render must NOT kill the RAF loop
+    // (the reschedule is in `finally`), or the game freezes on a dead frame. Any
+    // error is captured and surfaced on-screen by `drawDiag` instead of vanishing
+    // into the console (invisible inside a phone WKWebView).
+    try {
+      const dtWallMs = Math.min(100, now - this.last);
+      this.last = now;
 
-    this.body.tick(now);
+      this.body.tick(now);
 
-    this.acc += dtWallMs;
-    let steps = 0;
-    while (this.acc >= STEP_MS && steps < 5) {
-      this.step(STEP_MS, now);
-      this.acc -= STEP_MS;
-      steps++;
+      this.acc += dtWallMs;
+      let steps = 0;
+      while (this.acc >= STEP_MS && steps < 5) {
+        this.step(STEP_MS, now);
+        this.acc -= STEP_MS;
+        steps++;
+      }
+
+      this.render(now);
+      this.diagnostics?.update(this.body);
+    } catch (err) {
+      this.lastError = err instanceof Error ? err.message : String(err);
+      this.lastErrorStack = err instanceof Error ? (err.stack ?? "") : "";
+      // eslint-disable-next-line no-console
+      console.error("[motion] frame error:", err);
     }
-
-    this.render(now);
-    this.diagnostics?.update(this.body);
+    try {
+      this.drawDiag();
+    } catch {
+      /* diag must never itself break the loop */
+    }
     this.rafId = requestAnimationFrame(this.frame);
   };
+
+  /**
+   * Draw a tiny always-on status readout (and, if the last frame threw, a red
+   * error banner) directly on the canvas. Visible even inside the phone WKWebView
+   * where there's no console — this is how we see what the running game is doing.
+   */
+  private drawDiag(): void {
+    const ctx = this.surf.ctx;
+    const dpr = this.surf.dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const b = this.body;
+    const age = Number.isFinite(b.ageMs) ? Math.round(b.ageMs) : -1;
+    const line =
+      `scr:${this.screen} h:${b.health} age:${age}ms ` +
+      `q:${b.trackingQuality.toFixed(2)} L:${b.leftHandOpen.toFixed(2)} R:${b.rightHandOpen.toFixed(2)}`;
+
+    ctx.save();
+    ctx.font = "12px monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    const y = window.innerHeight - 6;
+    const w = ctx.measureText(line).width + 12;
+    ctx.fillStyle = "rgba(0,0,0,0.65)";
+    ctx.fillRect(4, y - 16, w, 20);
+    ctx.fillStyle = "#37ff8b";
+    ctx.fillText(line, 10, y);
+    ctx.restore();
+
+    if (this.lastError) {
+      ctx.save();
+      ctx.fillStyle = "rgba(150,0,0,0.92)";
+      ctx.fillRect(0, 0, window.innerWidth, 96);
+      ctx.fillStyle = "#fff";
+      ctx.textAlign = "left";
+      ctx.textBaseline = "top";
+      ctx.font = "bold 13px monospace";
+      ctx.fillText("MOTION FRAME ERROR", 10, 8);
+      ctx.font = "12px monospace";
+      ctx.fillText(this.lastError.slice(0, 90), 10, 30);
+      const frame0 = (this.lastErrorStack.split("\n")[1] ?? "").trim();
+      ctx.fillText(frame0.slice(0, 90), 10, 50);
+      ctx.restore();
+    }
+  }
 
   private step(dtMs: number, now: number): void {
     switch (this.screen) {
