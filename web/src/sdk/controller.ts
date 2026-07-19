@@ -41,6 +41,14 @@ export interface BodyController {
   readonly leftFingertip?: [number, number] | undefined;
   /** Precise right index-fingertip (0..1), or undefined when absent. */
   readonly rightFingertip?: [number, number] | undefined;
+  /**
+   * Whether each hand is currently tracked. `undefined` means "always active" — the
+   * phone (Vision) and keyboard controllers always provide both hands, so they leave
+   * these unset. The webcam controller sets them `false` when a hand isn't seen, so a
+   * game can hide/disable that blade instead of leaving a frozen one in play.
+   */
+  readonly leftHandActive?: boolean | undefined;
+  readonly rightHandActive?: boolean | undefined;
   /** 0..1 aggregate confidence, blended with staleness. */
   readonly trackingQuality: number;
   /** Health classification the readiness gate + game pause read. */

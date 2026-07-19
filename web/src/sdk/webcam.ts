@@ -29,6 +29,8 @@ const MODEL_URL =
 
 /** After this long with no detected hand, the controller reports tracking lost. */
 const LOST_AFTER_MS = 300;
+/** Per-hand grace: a hand unseen longer than this is marked inactive (blade hidden). */
+const HAND_GRACE_MS = 250;
 /** Detection throttle — ~30 Hz is plenty and keeps the main thread responsive. */
 const DETECT_INTERVAL_MS = 33;
 /** Openness maps this fingertip/palm ratio → [0,1] (fist → open). */
@@ -64,6 +66,8 @@ export class WebcamController implements BodyController {
   rightHandOpen = 1;
   leftFingertip: [number, number] | undefined = undefined;
   rightFingertip: [number, number] | undefined = undefined;
+  leftHandActive = false;
+  rightHandActive = false;
   trackingQuality = 0;
   health: TrackingHealth = "no_signal";
   hasRequiredJoints = false;
@@ -77,6 +81,9 @@ export class WebcamController implements BodyController {
   private lastVideoTime = -1;
   private lastDetectAt = -Infinity;
   private lastHandAt = -Infinity;
+  /** When each hand was last individually detected (for per-hand active + assignment). */
+  private lastLeftAt = -Infinity;
+  private lastRightAt = -Infinity;
 
   constructor() {
     this.status = this.makeStatus("Starting camera… allow access when prompted.");
@@ -130,6 +137,7 @@ export class WebcamController implements BodyController {
       video.muted = true;
       await video.play();
       this.video = video;
+      this.showPreview(video);
 
       this.ready = true;
       this.status.style.display = "none";
@@ -160,6 +168,11 @@ export class WebcamController implements BodyController {
       }
     }
 
+    // Per-hand active: a hand not seen within the grace window is inactive, so the
+    // game hides its blade instead of leaving a frozen one in play.
+    this.leftHandActive = nowMs - this.lastLeftAt < HAND_GRACE_MS;
+    this.rightHandActive = nowMs - this.lastRightAt < HAND_GRACE_MS;
+
     // Health from recency of a detected hand.
     this.ageMs = nowMs - this.lastHandAt;
     if (this.lastHandAt === -Infinity) {
@@ -177,13 +190,18 @@ export class WebcamController implements BodyController {
     }
   }
 
-  /** Map the detected hands → left/right blade joints (by mirrored screen-x) + openness. */
+  /**
+   * Assign the detected hands to the left/right blade slots with temporal stability:
+   *  - Two hands: pick the pairing that minimizes movement from last frame (no swaps).
+   *  - One hand: keep it on whichever slot is currently active (so a single hand doesn't
+   *    hop sides); if neither/both active, use the nearer slot. The other slot is left
+   *    untouched and ages out to inactive — so it's hidden, not frozen in play.
+   */
   private applyResult(res: MpResult, now: number): void {
     const hands = res.landmarks ?? [];
     if (hands.length === 0) return;
 
-    // Compute a mirrored palm center + openness for each detected hand.
-    const detected = hands.map((lm) => {
+    const dets = hands.map((lm) => {
       const palm = lm[9] ?? lm[0]; // middle-finger MCP ≈ palm center
       return {
         x: 1 - (palm?.x ?? 0.5), // MIRROR x so it feels like a mirror
@@ -192,14 +210,37 @@ export class WebcamController implements BodyController {
         indexTip: lm[8],
       };
     });
-    // Assign by screen-x: leftmost blade = left hand, rightmost = right hand.
-    detected.sort((a, b) => a.x - b.x);
-    const left = detected[0];
-    const right = detected.length > 1 ? detected[detected.length - 1] : undefined;
+    const lpos = this.joints.leftHand;
+    const rpos = this.joints.rightHand;
+    const d = (p: { x: number; y: number }, pos: [number, number]) =>
+      Math.hypot(p.x - pos[0], p.y - pos[1]);
 
-    if (left) this.applyHand("left", left);
-    if (right) this.applyHand("right", right);
-    // With a single hand, only that side updates; the other blade holds its position.
+    if (dets.length === 1) {
+      const one = dets[0]!;
+      const leftActive = now - this.lastLeftAt < HAND_GRACE_MS;
+      const rightActive = now - this.lastRightAt < HAND_GRACE_MS;
+      let side: "left" | "right";
+      if (leftActive && !rightActive) side = "left";
+      else if (rightActive && !leftActive) side = "right";
+      else side = d(one, lpos) <= d(one, rpos) ? "left" : "right";
+      this.applyHand(side, one);
+      if (side === "left") this.lastLeftAt = now;
+      else this.lastRightAt = now;
+    } else {
+      const a = dets[0]!;
+      const b = dets[1]!;
+      const straight = d(a, lpos) + d(b, rpos);
+      const swapped = d(a, rpos) + d(b, lpos);
+      if (straight <= swapped) {
+        this.applyHand("left", a);
+        this.applyHand("right", b);
+      } else {
+        this.applyHand("left", b);
+        this.applyHand("right", a);
+      }
+      this.lastLeftAt = now;
+      this.lastRightAt = now;
+    }
 
     this.lastHandAt = now;
   }
@@ -223,9 +264,31 @@ export class WebcamController implements BodyController {
     }
   }
 
+  /** Show the live camera feed as a small MIRRORED inset in the bottom-right corner, so
+   *  the player can see themselves and frame their hands (like the phone's camera inset). */
+  private showPreview(video: HTMLVideoElement): void {
+    Object.assign(video.style, {
+      position: "fixed",
+      right: "16px",
+      bottom: "16px",
+      width: "22vw",
+      maxWidth: "260px",
+      aspectRatio: "4 / 3",
+      objectFit: "cover",
+      transform: "scaleX(-1)", // mirror to match the mirrored blade coordinates
+      borderRadius: "12px",
+      border: "2px solid rgba(120,200,255,0.5)",
+      boxShadow: "0 6px 24px rgba(0,0,0,0.5)",
+      zIndex: "40",
+      pointerEvents: "none",
+    } as CSSStyleDeclaration);
+    document.body.appendChild(video);
+  }
+
   dispose(): void {
     const stream = this.video?.srcObject as MediaStream | null;
     stream?.getTracks().forEach((t) => t.stop());
+    this.video?.remove();
     this.video = null;
     this.landmarker = null;
     this.status.remove();

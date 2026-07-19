@@ -86,13 +86,31 @@ interface HandTrack {
   /** Smoothed blade-aim unit vector: the swing direction (falls back to resting). */
   aimx: number;
   aimy: number;
+  /** Whether this hand is currently tracked (false → blade hidden, can't slice). */
+  active: boolean;
   trail: { x: number; y: number }[];
 }
 
 function newHand(restAimX: number): HandTrack {
   // Rest pointing up-and-outward (left blade tilts left, right blade tilts right).
   const len = Math.hypot(restAimX, -1) || 1;
-  return { x: 0.5, y: 0.5, vx: 0, vy: 0, aimx: restAimX / len, aimy: -1 / len, trail: [] };
+  return {
+    x: 0.5,
+    y: 0.5,
+    vx: 0,
+    vy: 0,
+    aimx: restAimX / len,
+    aimy: -1 / len,
+    active: false,
+    trail: [],
+  };
+}
+
+/** A hand is active unless the controller explicitly flags it inactive (webcam: hand not
+ *  seen). Phone/keyboard leave the flag undefined → always active. */
+function handActive(body: BodyController, which: Which): boolean {
+  const v = which === "left" ? body.leftHandActive : body.rightHandActive;
+  return v !== false;
 }
 
 export class Slice implements Game {
@@ -181,6 +199,27 @@ export class Slice implements Game {
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
       const [nx, ny] = map[which];
+
+      if (!handActive(body, which)) {
+        // Hand not tracked: freeze it, drop its trail, and it can't slice (speed 0).
+        h.active = false;
+        h.vx = 0;
+        h.vy = 0;
+        h.trail.length = 0;
+        continue;
+      }
+      if (!h.active) {
+        // (Re)activated: snap to the new position with NO velocity so a hand popping
+        // back into frame doesn't register a giant swipe and slice everything.
+        h.active = true;
+        h.x = nx;
+        h.y = ny;
+        h.vx = 0;
+        h.vy = 0;
+        h.trail = [{ x: nx, y: ny }];
+        continue;
+      }
+
       if (dt > 0) {
         h.vx = (nx - h.x) / dt;
         h.vy = (ny - h.y) / dt;
@@ -282,6 +321,7 @@ export class Slice implements Game {
   private slice(): void {
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
+      if (!h.active) continue;
       const speed = Math.hypot(h.vx, h.vy);
       if (speed < SLICE_SPEED) continue;
       const trail = h.trail;
@@ -482,6 +522,7 @@ export class Slice implements Game {
     const { ctx } = r;
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
+      if (!h.active) continue; // hand not tracked → no blade drawn
 
       // Motion trail behind the blade (brighter/thicker when swinging fast).
       const t = h.trail;
