@@ -57,12 +57,12 @@ final class SyntheticPoseDriver {
         t += 1.0 / 30.0
         frame += 1
 
-        // Hands drift in gentle loops around chest height so the avatar visibly moves and
-        // the hands pass over the floating objects.
-        let lx = 0.36 + 0.06 * sin(t * 1.3)
-        let ly = 0.5 + 0.16 * sin(t * 0.9)
-        let rx = 0.64 + 0.06 * cos(t * 1.1)
-        let ry = 0.5 + 0.16 * cos(t * 1.0)
+        // Hands sweep FAST across the reach band — fast enough to exceed a slicer's speed
+        // threshold — so the harness exercises slicing/grabbing, not just idle tracking.
+        let lx = 0.42 + 0.22 * sin(t * 4.5)
+        let ly = 0.45 + 0.14 * sin(t * 5.2)
+        let rx = 0.58 + 0.22 * cos(t * 4.2)
+        let ry = 0.45 + 0.14 * cos(t * 4.8)
 
         // Openness oscillates 0..1 (fist ⇄ open palm), out of phase per hand, so the
         // deliberate open→close grab gesture fires on its own.

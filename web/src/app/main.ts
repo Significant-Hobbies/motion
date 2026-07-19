@@ -21,6 +21,7 @@ import {
 import { createSession, type Game } from "../sdk";
 import { ReachDodge } from "../games/reach-dodge";
 import { MotionMaker } from "../games/motion-maker";
+import { Slice } from "../games/slice";
 import { Overlay } from "./overlay";
 
 const canvasEl = document.getElementById("game-canvas") as HTMLCanvasElement;
@@ -28,13 +29,32 @@ const overlayEl = document.getElementById("overlay") as HTMLElement;
 
 const overlay = new Overlay(overlayEl);
 
-// `?room=MOTION` (or `?game=motion-maker`) runs the interactive Motion Maker
-// playground as a live mirror; everything else keeps the classic Reach & Dodge.
-// Motion Maker is the game everywhere the phone (bridge) hosts it, plus the
-// browser live-mirror (`?room=MOTION` / `?game=motion-maker`). Classic Reach &
-// Dodge stays reachable only for the plain browser socket default.
-const useMotionMaker = MOTION_MAKER || TRANSPORT === "bridge";
-const game: Game = useMotionMaker ? new MotionMaker() : new ReachDodge();
+// Game selection. `Slice` (Fruit-Ninja-style arcade) is the FEATURED game: it runs
+// everywhere the phone (bridge) hosts the app, on the `?room=MOTION` live mirror, and
+// via `?game=slice`. The older playground/round stay reachable by explicit `?game=`:
+//   ?game=motion-maker → the interactive grab playground
+//   ?game=reach-dodge  → the classic timed round
+// The plain browser socket default (no param) keeps Reach & Dodge.
+const gameParam = new URLSearchParams(location.search).get("game");
+
+function pickGame(): { game: Game; live: boolean } {
+  switch (gameParam) {
+    case "motion-maker":
+      return { game: new MotionMaker(), live: true };
+    case "reach-dodge":
+      return { game: new ReachDodge(), live: false };
+    case "slice":
+      return { game: new Slice(), live: true };
+    default:
+      // Featured everywhere the phone hosts it or the MOTION mirror is on.
+      if (MOTION_MAKER || TRANSPORT === "bridge") return { game: new Slice(), live: true };
+      return { game: new ReachDodge(), live: false };
+  }
+}
+
+// `live` games are live/interactive and skip the mirror + readiness ceremony (the
+// phone's own Start button is the readiness gate); classic rounds keep the gate.
+const { game, live: skipReadinessForGame } = pickGame();
 
 const session = createSession({
   game,
@@ -46,8 +66,8 @@ const session = createSession({
     debug: DEBUG,
     record: RECORD,
     transport: TRANSPORT,
-    // Motion Maker is a live interactive mirror — skip the readiness ceremony.
-    skipReadiness: useMotionMaker,
+    // Live/interactive games skip the mirror + readiness ceremony.
+    skipReadiness: skipReadinessForGame,
   },
 });
 
