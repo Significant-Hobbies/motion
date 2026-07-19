@@ -30,7 +30,6 @@ import UIKit
 /// High-level screen the app should show. Drives `ContentView` routing.
 enum Phase: Sendable, Equatable {
     case setup        // camera up, guiding the player into frame
-    case calibration  // running the 5s calibration flow
     case game         // full-screen web game; pose streams in-process via PoseBridge
 }
 
@@ -125,11 +124,8 @@ final class AppModel {
     var tracking: TrackingState = .lost
     /// Human guidance string for the readiness UI ("Step back", "Raise the phone"…).
     var guidance: String = "Point the camera at your whole body."
-    /// True once the setup has been continuously good long enough to proceed.
-    var readyToCalibrate: Bool = false
-
-    var calibrationStage: CalibMessage.Stage = .neutral
-    var calibrationProgress: Double = 0
+    /// True once the setup has been continuously good long enough to start playing.
+    var readyToStart: Bool = false
 
     /// Latest smoothed, mirror-corrected joints (top-left origin, 0..1) for the overlay.
     var joints: Joints?
@@ -149,9 +145,9 @@ final class AppModel {
 
     /// Monotonic counter that increments once per detected clap while NOT in `.game`. Views
     /// observe this with `.onChange` and, if their primary CTA is visible + enabled, invoke
-    /// it — so a far-away user (full-body mode, standing back) can press "Calibrate" /
-    /// "Continue" by clapping instead of reaching the screen. See `ClapDetector` for the
-    /// pose-only detection. Never increments in `.game` (the web game owns its own input).
+    /// it — so a far-away user (full-body mode, standing back) can press "Start" by clapping
+    /// instead of reaching the screen. See `ClapDetector` for the pose-only detection. Never
+    /// increments in `.game` (the web game owns its own input).
     private(set) var clapCount: Int = 0
 
     /// Pose-only clap detector, fed each frame from `ingest`. Thresholds live on the struct.
@@ -259,7 +255,7 @@ final class AppModel {
         self.quality = quality
         self.tracking = tracking
         self.guidance = guidance
-        self.readyToCalibrate = ready
+        self.readyToStart = ready
         // Hold the last known hands so a body-only frame doesn't blank the readout; the
         // packet still only carries hands when we have a value.
         if let hands { self.hands = hands }
@@ -304,25 +300,16 @@ final class AppModel {
         }
     }
 
-    // MARK: - Calibration bridge
+    // MARK: - Game entry / exit
 
-    /// Called by `CalibrationController` as it advances stages.
-    func calibrationDidAdvance(stage: CalibMessage.Stage, progress: Double) {
-        calibrationStage = stage
-        calibrationProgress = progress
-        if stage == .done {
-            phase = .game
-            // Tell the web game calibration is done (it may gate on this).
-            bridge.calibrationDidFinish()
-        }
-    }
-
-    /// Enter the calibration phase (from setup, once ready).
-    func beginCalibration() {
+    /// Enter the game directly from setup. There is no separate calibration step: the
+    /// web game captures its own standing baseline on its first frame, so we just flip
+    /// to `.game` (the WKWebView starts the game on its `ready` event) and ping the
+    /// bridge that the session is starting.
+    func startGame() {
         guard phase == .setup else { return }
-        phase = .calibration
-        calibrationStage = .neutral
-        calibrationProgress = 0
+        phase = .game
+        bridge.calibrationDidFinish()
     }
 
     /// Leave the game and return to setup (the minimal in-game exit control).
@@ -331,7 +318,7 @@ final class AppModel {
         recorder.disarm()
         bridge.detach()
         phase = .setup
-        readyToCalibrate = false
+        readyToStart = false
     }
 
     // MARK: - Streaming lifecycle

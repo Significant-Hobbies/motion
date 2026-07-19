@@ -2,15 +2,15 @@
 //  SetupView.swift
 //  Motion
 //
-//  The camera screen used across the setup / calibration phases of the v1 flow:
+//  The camera screen shown before the game starts (v1 flow):
 //    • live camera preview + pose overlay + framing guide,
 //    • a minimal top bar (dev-server IP field + tracking dot),
 //    • live guidance text + a readiness indicator,
-//    • a calibration prompt (setup) or calibration progress (calibration).
+//    • a single "Start" button (enabled once you're in frame).
 //
-//  Once calibration completes, `AppModel.phase` flips to `.game` and `ContentView` swaps
-//  in `GameView` (the full-screen web game). This view owns the shared `PoseSession` and a
-//  `CalibrationController` it starts when the player taps "Calibrate".
+//  Tapping Start (or clapping when far away) flips `AppModel.phase` to `.game` and
+//  `ContentView` swaps in `GameView` (the full-screen web game). There is no calibration
+//  step — the web game captures its own baseline on its first frame.
 //
 
 import SwiftUI
@@ -21,7 +21,6 @@ struct SetupView: View {
     @Environment(\.verticalSizeClass) private var vSizeClass
     let session: PoseSession
 
-    @State private var calibration: CalibrationController?
     @State private var showDevField = false
 
     /// Bumped when a clap fires the CTA, to drive a brief button pulse (nice-to-have feedback
@@ -52,15 +51,14 @@ struct SetupView: View {
             }
             .padding()
         }
-        .onDisappear { calibration?.cancel() }
         // Clap → primary CTA. This view owns the setup CTA, so it maps the clap to its own
-        // button: a clap acts exactly like tapping "Calibrate", but ONLY when that button is
-        // actually enabled (setup phase + ready). Anything else (not ready, mid-calibration)
-        // ignores the clap so a far-away user can't trigger a disabled/absent action.
+        // button: a clap acts exactly like tapping "Start", but ONLY when that button is
+        // actually enabled (setup phase + ready). Anything else (not ready) ignores the clap
+        // so a far-away user can't trigger a disabled/absent action.
         .onChange(of: model.clapCount) { _, _ in
-            guard model.phase == .setup, model.readyToCalibrate else { return }
+            guard model.phase == .setup, model.readyToStart else { return }
             triggerClapPulse()
-            startCalibration()
+            model.startGame()
         }
     }
 
@@ -245,35 +243,26 @@ struct SetupView: View {
             case .setup:
                 VStack(spacing: 6) {
                     Button {
-                        startCalibration()
+                        model.startGame()
                     } label: {
-                        Text(model.readyToCalibrate ? "Calibrate" : "Get in frame to calibrate")
+                        Text(model.readyToStart ? "Start" : "Get in frame to start")
                             .font(.headline)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                     }
                     .buttonStyle(.borderedProminent)
-                    .disabled(!model.readyToCalibrate)
+                    .disabled(!model.readyToStart)
                     // Brief pulse when a clap fires the button, so a far-away user sees it land.
                     .scaleEffect(clapPulse ? 1.04 : 1.0)
 
                     // Discoverability: once the button is clap-triggerable (ready) AND the user
                     // is likely far from the phone (full-body mode = standing back), hint that a
                     // clap works as a remote press. Quiet + consistent with the panel style.
-                    if model.readyToCalibrate && model.framingMode == .fullBody {
-                        Text("👏 or clap to continue")
+                    if model.readyToStart && model.framingMode == .fullBody {
+                        Text("👏 or clap to start")
                             .font(.caption)
                             .foregroundStyle(.white.opacity(0.75))
                     }
-                }
-
-            case .calibration:
-                VStack(spacing: 8) {
-                    Text(calibrationPrompt)
-                        .font(.title3.bold())
-                        .foregroundStyle(.white)
-                    ProgressView(value: model.calibrationProgress)
-                        .tint(.green)
                 }
 
             case .game:
@@ -301,28 +290,12 @@ struct SetupView: View {
         .background(.white.opacity(0.12), in: Capsule())
     }
 
-    private var calibrationPrompt: String {
-        switch model.calibrationStage {
-        case .neutral: return "Stand still, arms relaxed"
-        case .arms: return "Stretch your arms out wide"
-        case .squat: return "Do a small squat"
-        case .done: return "All set!"
-        }
-    }
-
     private var readinessColor: Color {
         switch model.tracking {
         case .ok: return .green
         case .lost: return .red
         default: return .yellow
         }
-    }
-
-    private func startCalibration() {
-        model.beginCalibration()
-        let c = CalibrationController(model: model)
-        calibration = c
-        c.start()
     }
 }
 

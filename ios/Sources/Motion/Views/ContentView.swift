@@ -4,13 +4,13 @@
 //
 //  Top-level router for the v1 (serverless, single-device) flow. Chooses a screen from
 //  `AppModel.phase`:
-//      setup       → SetupView (camera preview + readiness guidance)
-//      calibration → SetupView (with the calibration overlay)
-//      game        → GameView (full-screen WKWebView + camera-preview inset + Record)
+//      setup → SetupView (camera preview + readiness guidance + Start)
+//      game  → GameView (full-screen WKWebView + camera-preview inset + Record)
 //
 //  A single `PoseSession` is created once (the camera is needed in every phase) and shared
-//  across setup / calibration / game so the camera is never torn down between phases. The
-//  same pipeline that guides setup also feeds pose into the web game via `PoseBridge`.
+//  across setup / game so the camera is never torn down between phases. The same pipeline
+//  that guides setup also feeds pose into the web game via `PoseBridge`. There is no separate
+//  calibration phase — the web game captures its own baseline on its first frame.
 //
 
 import SwiftUI
@@ -26,7 +26,7 @@ struct ContentView: View {
         Group {
             if let session {
                 switch model.phase {
-                case .setup, .calibration:
+                case .setup:
                     SetupView(session: session)
                 case .game:
                     GameView(session: session)
