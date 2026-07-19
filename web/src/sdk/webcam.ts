@@ -31,13 +31,75 @@ const MODEL_URL =
 const LOST_AFTER_MS = 300;
 /** Per-hand grace: a hand unseen longer than this is marked inactive (blade hidden). */
 const HAND_GRACE_MS = 250;
-/** Detection throttle — ~30 Hz is plenty and keeps the main thread responsive. */
-const DETECT_INTERVAL_MS = 33;
+/** Min gap between detections. Small so we detect every fresh camera frame (lowest
+ *  latency); the `video.currentTime` change gate keeps us from re-running the same frame. */
+const DETECT_INTERVAL_MS = 15;
 /** Openness maps this fingertip/palm ratio → [0,1] (fist → open). */
 const OPEN_MIN = 1.1;
 const OPEN_MAX = 2.0;
-/** Per-frame smoothing for hand position + openness. */
-const SMOOTH = 0.5;
+/** Light smoothing for openness (position uses the One-Euro filter below). */
+const OPEN_SMOOTH = 0.5;
+
+// Map a COMFORTABLE hand region in the camera frame to the FULL screen. Raw 1:1
+// mapping felt cramped — you had to shove your hands to the frame edges to reach the
+// screen edges. With gain, a relaxed movement around a natural center covers everything.
+// Slightly higher X gain than Y because the screen is wider than the (4:3) camera frame.
+const GAIN_X = 1.75;
+const GAIN_Y = 1.55;
+const CENTER_X = 0.5;
+const CENTER_Y = 0.45; // hands rest a touch above frame-center while playing
+
+/** Remap one filtered camera-frame coord to screen space around a center, with gain. */
+function remap(v: number, center: number, gain: number): number {
+  return clamp01(0.5 + (v - center) * gain);
+}
+
+/**
+ * One-Euro filter — the standard adaptive low-pass for interactive pointing: it smooths
+ * hard when the hand is slow (kills jitter) and barely at all when the hand is fast
+ * (kills lag). Far better feel than a fixed EMA, which must trade jitter against latency.
+ * See Casiez, Roussel & Vogel, "1€ Filter" (CHI 2012).
+ */
+class LowPass {
+  private y = 0;
+  private started = false;
+  get value(): number {
+    return this.y;
+  }
+  filter(x: number, alpha: number): number {
+    this.y = this.started ? alpha * x + (1 - alpha) * this.y : x;
+    this.started = true;
+    return this.y;
+  }
+}
+
+class OneEuro {
+  private xLp = new LowPass();
+  private dxLp = new LowPass();
+  private tPrev = -1;
+  constructor(
+    private minCutoff = 1.2,
+    private beta = 1.0,
+    private dCutoff = 1.0,
+  ) {}
+  private alpha(dt: number, cutoff: number): number {
+    const tau = 1 / (2 * Math.PI * cutoff);
+    return 1 / (1 + tau / dt);
+  }
+  /** Filter value `x` at time `t` (seconds). */
+  filter(x: number, t: number): number {
+    if (this.tPrev < 0) {
+      this.tPrev = t;
+      return this.xLp.filter(x, 1);
+    }
+    const dt = Math.max(1e-3, t - this.tPrev);
+    this.tPrev = t;
+    const dx = (x - this.xLp.value) / dt;
+    const edx = this.dxLp.filter(dx, this.alpha(dt, this.dCutoff));
+    const cutoff = this.minCutoff + this.beta * Math.abs(edx);
+    return this.xLp.filter(x, this.alpha(dt, cutoff));
+  }
+}
 
 function neutralJoints(): Joints {
   return {
@@ -84,6 +146,11 @@ export class WebcamController implements BodyController {
   /** When each hand was last individually detected (for per-hand active + assignment). */
   private lastLeftAt = -Infinity;
   private lastRightAt = -Infinity;
+  /** One-Euro position filters per hand (x/y), for low-jitter, low-lag tracking. */
+  private filters: Record<"left" | "right", { x: OneEuro; y: OneEuro }> = {
+    left: { x: new OneEuro(), y: new OneEuro() },
+    right: { x: new OneEuro(), y: new OneEuro() },
+  };
 
   constructor() {
     this.status = this.makeStatus("Starting camera… allow access when prompted.");
@@ -122,13 +189,24 @@ export class WebcamController implements BodyController {
           baseOptions: { modelAssetPath: MODEL_URL, delegate },
           runningMode: "VIDEO",
           numHands: 2,
+          // Lower presence/tracking thresholds so an already-tracked hand isn't dropped
+          // on a marginal frame (fewer flickers / blade dropouts); detection stays at 0.5.
+          minHandDetectionConfidence: 0.5,
+          minHandPresenceConfidence: 0.3,
+          minTrackingConfidence: 0.3,
         });
       // Prefer the GPU delegate (WebGL); fall back to CPU when WebGL is unavailable
       // (some browsers / VMs), so tracking still runs, just a little slower.
       this.landmarker = await make("GPU").catch(() => make("CPU"));
 
+      // Higher capture resolution → crisper landmarks (a modern Mac handles 720p easily).
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: 640, height: 480, facingMode: "user" },
+        video: {
+          width: { ideal: 1280 },
+          height: { ideal: 720 },
+          frameRate: { ideal: 30 },
+          facingMode: "user",
+        },
         audio: false,
       });
       const video = document.createElement("video");
@@ -223,7 +301,7 @@ export class WebcamController implements BodyController {
       if (leftActive && !rightActive) side = "left";
       else if (rightActive && !leftActive) side = "right";
       else side = d(one, lpos) <= d(one, rpos) ? "left" : "right";
-      this.applyHand(side, one);
+      this.applyHand(side, one, now);
       if (side === "left") this.lastLeftAt = now;
       else this.lastRightAt = now;
     } else {
@@ -232,11 +310,11 @@ export class WebcamController implements BodyController {
       const straight = d(a, lpos) + d(b, rpos);
       const swapped = d(a, rpos) + d(b, lpos);
       if (straight <= swapped) {
-        this.applyHand("left", a);
-        this.applyHand("right", b);
+        this.applyHand("left", a, now);
+        this.applyHand("right", b, now);
       } else {
-        this.applyHand("left", b);
-        this.applyHand("right", a);
+        this.applyHand("left", b, now);
+        this.applyHand("right", a, now);
       }
       this.lastLeftAt = now;
       this.lastRightAt = now;
@@ -248,19 +326,27 @@ export class WebcamController implements BodyController {
   private applyHand(
     which: "left" | "right",
     d: { x: number; y: number; open: number; indexTip: MpLandmark | undefined },
+    nowMs: number,
   ): void {
     const key = which === "left" ? "leftHand" : "rightHand";
-    const cur = this.joints[key] as [number, number];
-    this.joints[key] = [
-      cur[0] + (clamp01(d.x) - cur[0]) * SMOOTH,
-      cur[1] + (clamp01(d.y) - cur[1]) * SMOOTH,
-    ];
+    const f = this.filters[which];
+    const t = nowMs / 1000;
+    // One-Euro filter the raw (mirrored) camera coords, THEN expand a comfortable region
+    // to the full screen so relaxed movement covers everything.
+    const fx = f.x.filter(clamp01(d.x), t);
+    const fy = f.y.filter(clamp01(d.y), t);
+    this.joints[key] = [remap(fx, CENTER_X, GAIN_X), remap(fy, CENTER_Y, GAIN_Y)];
+
     if (which === "left") {
-      this.leftHandOpen += (d.open - this.leftHandOpen) * SMOOTH;
-      this.leftFingertip = d.indexTip ? [1 - d.indexTip.x, d.indexTip.y] : undefined;
+      this.leftHandOpen += (d.open - this.leftHandOpen) * OPEN_SMOOTH;
+      this.leftFingertip = d.indexTip
+        ? [remap(1 - d.indexTip.x, CENTER_X, GAIN_X), remap(d.indexTip.y, CENTER_Y, GAIN_Y)]
+        : undefined;
     } else {
-      this.rightHandOpen += (d.open - this.rightHandOpen) * SMOOTH;
-      this.rightFingertip = d.indexTip ? [1 - d.indexTip.x, d.indexTip.y] : undefined;
+      this.rightHandOpen += (d.open - this.rightHandOpen) * OPEN_SMOOTH;
+      this.rightFingertip = d.indexTip
+        ? [remap(1 - d.indexTip.x, CENTER_X, GAIN_X), remap(d.indexTip.y, CENTER_Y, GAIN_Y)]
+        : undefined;
     }
   }
 
