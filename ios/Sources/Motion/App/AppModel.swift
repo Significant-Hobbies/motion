@@ -170,18 +170,21 @@ final class AppModel {
     /// from the device/interface orientation unless `framingModeOverride` forces one. Views
     /// observe this to show a subtle "Full-body" / "Upper-body" chip; `PoseSession` reads it
     /// each frame to pick the required-joint set.
-    private(set) var framingMode: FramingMode = .fullBody
+    private(set) var framingMode: FramingMode = .upperBody
 
-    /// Optional manual override. When non-nil it wins over the orientation-derived mode, so
-    /// we can force a mode later (e.g. a game that always wants upper-body). `nil` (default)
-    /// = auto-from-orientation. Set this and `framingMode` recomputes immediately.
-    var framingModeOverride: FramingMode? = nil {
+    /// Optional manual override. When non-nil it wins over the orientation-derived mode.
+    ///
+    /// Forced to `.upperBody`: the only v1 game (Motion Maker) uses head/torso/hands only —
+    /// no legs — so readiness must go green from just the UPPER body and must never demand
+    /// feet/knees in frame. (Orientation-as-mode — portrait=full-body — returns when a
+    /// full-body game ships: set this back to `nil`, or drive it per-game.)
+    var framingModeOverride: FramingMode? = .upperBody {
         didSet { recomputeFramingMode() }
     }
 
     /// The most recent orientation-derived mode (before the override is applied). Updated by
     /// `updateOrientation(isLandscape:)`; combined with the override in `recomputeFramingMode`.
-    private var orientationMode: FramingMode = .fullBody
+    private var orientationMode: FramingMode = .upperBody
 
     /// Update the orientation-derived framing mode. Called by the UI when the interface
     /// orientation changes. Landscape → upper-body, portrait (and unknown) → full-body.
