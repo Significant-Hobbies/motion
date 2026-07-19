@@ -22,6 +22,7 @@ import {
   NativeBridge,
   type BridgeTrackingState,
 } from "./bridge";
+import { WebcamController } from "./webcam";
 import { Readiness } from "./calibration";
 import { Diagnostics } from "./diagnostics";
 import { CanvasRecorder } from "./recording";
@@ -96,6 +97,12 @@ export interface SessionOptions {
    * In debug mode the game starts immediately (mouse movement supplies input).
    */
   skipReadiness?: boolean;
+  /**
+   * Drive the game from THIS device's webcam via in-browser MediaPipe hand tracking
+   * (no phone, no relay). Browser-only. Uses `WebcamController` as the body and runs
+   * without a room — the game starts once the camera first detects a hand.
+   */
+  camera?: boolean;
 }
 
 export interface CreateSessionArgs {
@@ -161,6 +168,9 @@ export class GameHost {
   private poseController: PoseController;
   private body: BodyController;
   private debugMode: boolean;
+
+  /** Webcam (browser MediaPipe) controller when `options.camera`; null otherwise. */
+  private webcamController: WebcamController | null = null;
 
   // Bridge (embedded/v1) mode only; null in socket mode.
   private bridgeController: BridgeController | null = null;
@@ -243,6 +253,22 @@ export class GameHost {
         : this.bridgeController;
 
       this.screen = "bridge-idle";
+    } else if (args.options.camera) {
+      // Webcam mode: this device's own camera drives the game via in-browser
+      // MediaPipe. No room, no relay, no recorder — like bridge but in a browser.
+      // `skipReadiness` (forced on by the app for camera) drops us into the game as
+      // soon as the camera first sees a hand.
+      this.room = null;
+      this.readiness = null;
+      this.recorder = null;
+      this.recordOn = false;
+
+      this.webcamController = new WebcamController();
+      this.body = this.debugMode
+        ? new KeyboardDebugController(this.canvasEl)
+        : this.webcamController;
+
+      this.screen = "pairing"; // renders blank without a room; advances on first hand
     } else {
       this.room = new Room(args.options.partyHost, args.options.forcedRoom);
       this.room.on("pose", (p) => this.poseController.ingest(p));
@@ -364,6 +390,7 @@ export class GameHost {
     window.removeEventListener("keydown", this.onKeyDown);
     if (this.body instanceof KeyboardDebugController) this.body.dispose();
     this.poseController.dispose();
+    this.webcamController?.dispose();
     this.bridgeController?.dispose();
     this.nativeBridge?.dispose();
     this.diagnostics?.dispose();
@@ -384,11 +411,11 @@ export class GameHost {
   private toggleDebug(): void {
     this.debugMode = !this.debugMode;
     if (this.body instanceof KeyboardDebugController) this.body.dispose();
-    // The live fallback controller depends on the transport.
+    // The live fallback controller depends on the mode.
     const live: BodyController =
       this.transport === "bridge" && this.bridgeController
         ? this.bridgeController
-        : this.poseController;
+        : this.webcamController ?? this.poseController;
     this.body = this.debugMode
       ? new KeyboardDebugController(this.canvasEl)
       : live;

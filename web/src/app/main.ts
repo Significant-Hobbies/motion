@@ -17,6 +17,7 @@ import {
   FORCED_ROOM,
   TRANSPORT,
   MOTION_MAKER,
+  CAMERA,
 } from "../config";
 import { createSession, type Game } from "../sdk";
 import { ReachDodge } from "../games/reach-dodge";
@@ -66,8 +67,11 @@ const session = createSession({
     debug: DEBUG,
     record: RECORD,
     transport: TRANSPORT,
-    // Live/interactive games skip the mirror + readiness ceremony.
-    skipReadiness: skipReadinessForGame,
+    // Drive from this device's webcam (browser MediaPipe) instead of the phone.
+    camera: CAMERA,
+    // Live/interactive games skip the mirror + readiness ceremony; camera mode always
+    // does (it advances the moment the webcam first sees a hand).
+    skipReadiness: skipReadinessForGame || CAMERA,
   },
 });
 

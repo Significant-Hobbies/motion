@@ -29,6 +29,13 @@ export const PARTY_HOST: string =
 /** Debug mode: enables keyboard/mouse controller + diagnostics overlay. */
 export const DEBUG: boolean = params.get("debug") === "1";
 
+/**
+ * Webcam mode (`?camera=1`): drive the game from THIS device's webcam via in-browser
+ * MediaPipe hand tracking — no phone. Browser-only (the phone uses its native camera).
+ * Overrides the socket/relay controller with `WebcamController`.
+ */
+export const CAMERA: boolean = params.get("camera") === "1";
+
 /** Recording default: opt-in via `?record=1`. Also toggleable in the pairing UI. */
 export const RECORD: boolean = params.get("record") === "1";
 
