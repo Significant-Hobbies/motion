@@ -83,11 +83,16 @@ interface HandTrack {
   y: number;
   vx: number;
   vy: number;
+  /** Smoothed blade-aim unit vector: the swing direction (falls back to resting). */
+  aimx: number;
+  aimy: number;
   trail: { x: number; y: number }[];
 }
 
-function newHand(): HandTrack {
-  return { x: 0.5, y: 0.5, vx: 0, vy: 0, trail: [] };
+function newHand(restAimX: number): HandTrack {
+  // Rest pointing up-and-outward (left blade tilts left, right blade tilts right).
+  const len = Math.hypot(restAimX, -1) || 1;
+  return { x: 0.5, y: 0.5, vx: 0, vy: 0, aimx: restAimX / len, aimy: -1 / len, trail: [] };
 }
 
 export class Slice implements Game {
@@ -100,7 +105,7 @@ export class Slice implements Game {
   private halves: Half[] = [];
   private splats: Splat[] = [];
   private popups: Popup[] = [];
-  private hands: Record<Which, HandTrack> = { left: newHand(), right: newHand() };
+  private hands: Record<Which, HandTrack> = { left: newHand(-0.5), right: newHand(0.5) };
 
   private score = 0;
   private lives = START_LIVES;
@@ -126,7 +131,7 @@ export class Slice implements Game {
     this.halves = [];
     this.splats = [];
     this.popups = [];
-    this.hands = { left: newHand(), right: newHand() };
+    this.hands = { left: newHand(-0.5), right: newHand(0.5) };
     this.score = 0;
     this.lives = START_LIVES;
     this.sliced = 0;
@@ -182,6 +187,18 @@ export class Slice implements Game {
       }
       h.x = nx;
       h.y = ny;
+      // Point the blade along the swing when moving; hold the last aim when nearly
+      // still (so a resting blade doesn't spin from jitter). Smoothed for a steady look.
+      const speed = Math.hypot(h.vx, h.vy);
+      if (speed > 0.25) {
+        const ax = h.vx / speed;
+        const ay = h.vy / speed;
+        h.aimx += (ax - h.aimx) * 0.35;
+        h.aimy += (ay - h.aimy) * 0.35;
+        const al = Math.hypot(h.aimx, h.aimy) || 1;
+        h.aimx /= al;
+        h.aimy /= al;
+      }
       h.trail.push({ x: nx, y: ny });
       if (h.trail.length > TRAIL_LEN) h.trail.shift();
     }
@@ -460,11 +477,13 @@ export class Slice implements Game {
     ctx.globalAlpha = 1;
   }
 
-  /** Each hand is a glowing blade with a tapering motion trail. */
+  /** Each hand is a katana-style blade pointing along the swing, with a motion trail. */
   private renderBlades(r: Renderer): void {
     const { ctx } = r;
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
+
+      // Motion trail behind the blade (brighter/thicker when swinging fast).
       const t = h.trail;
       if (t.length >= 2) {
         for (let i = 1; i < t.length; i++) {
@@ -474,7 +493,7 @@ export class Slice implements Game {
           const [x0, y0] = r.toPx(p0.x, p0.y);
           const [x1, y1] = r.toPx(p1.x, p1.y);
           const f = i / t.length; // older = thinner/fainter
-          ctx.strokeStyle = `rgba(180,235,255,${0.08 + f * 0.5})`;
+          ctx.strokeStyle = `rgba(180,235,255,${0.05 + f * 0.4})`;
           ctx.lineWidth = Math.max(1, r.sx(0.004 + f * 0.02));
           ctx.lineCap = "round";
           ctx.beginPath();
@@ -483,13 +502,64 @@ export class Slice implements Game {
           ctx.stroke();
         }
       }
-      // Blade tip.
-      const [hx, hy] = r.toPx(h.x, h.y);
+
       const fast = Math.hypot(h.vx, h.vy) > SLICE_SPEED;
-      ctx.fillStyle = fast ? "#ffffff" : "rgba(120,200,255,0.85)";
+      const bladeLen = fast ? 0.19 : 0.15;
+      // Grip is BEHIND the hand so the blade extends past it along the aim; the hand
+      // sits at the guard (where the collision/swipe point is).
+      const [gx, gy] = r.toPx(h.x - h.aimx * 0.045, h.y - h.aimy * 0.045);
+      const [hx, hy] = r.toPx(h.x, h.y); // guard / hand
+      const [tx, ty] = r.toPx(h.x + h.aimx * bladeLen, h.y + h.aimy * bladeLen);
+      const len = Math.hypot(tx - hx, ty - hy) || 1;
+      const px = -(ty - hy) / len; // perpendicular for the guard
+      const py = (tx - hx) / len;
+
+      ctx.save();
+      ctx.lineCap = "round";
+
+      // Handle (grip → hand) + pommel.
+      ctx.strokeStyle = "#6b4a2b";
+      ctx.lineWidth = Math.max(5, r.sx(0.016));
       ctx.beginPath();
-      ctx.arc(hx, hy, r.sx(fast ? 0.02 : 0.014), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.moveTo(gx, gy);
+      ctx.lineTo(hx, hy);
+      ctx.stroke();
+
+      // Guard.
+      const guard = r.sx(0.028);
+      ctx.strokeStyle = "#d9a441";
+      ctx.lineWidth = Math.max(4, r.sx(0.012));
+      ctx.beginPath();
+      ctx.moveTo(hx - px * guard, hy - py * guard);
+      ctx.lineTo(hx + px * guard, hy + py * guard);
+      ctx.stroke();
+
+      // Glow along the blade when swinging.
+      const bladeW = Math.max(4, r.sx(0.013));
+      if (fast) {
+        ctx.strokeStyle = "rgba(150,215,255,0.55)";
+        ctx.lineWidth = bladeW * 3;
+        ctx.beginPath();
+        ctx.moveTo(hx, hy);
+        ctx.lineTo(tx, ty);
+        ctx.stroke();
+      }
+
+      // Steel blade + bright core.
+      ctx.strokeStyle = "#c3ccdf";
+      ctx.lineWidth = bladeW;
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+      ctx.strokeStyle = fast ? "#ffffff" : "#eef3ff";
+      ctx.lineWidth = Math.max(2, bladeW * 0.4);
+      ctx.beginPath();
+      ctx.moveTo(hx, hy);
+      ctx.lineTo(tx, ty);
+      ctx.stroke();
+
+      ctx.restore();
     }
   }
 
