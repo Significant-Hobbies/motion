@@ -43,6 +43,9 @@ final class PoseSession {
     private let evaluator = SetupEvaluator()
     /// Nonisolated bridge that forwards camera frames to the estimator off the main actor.
     private let frameBridge: FrameBridge
+    /// TEST-ONLY fabricated pose source (Simulator self-test). Non-nil only when the app was
+    /// launched with `--synthetic-pose`; otherwise the real camera path runs. See the driver.
+    private var synthetic: SyntheticPoseDriver?
 
     init(model: AppModel) {
         self.model = model
@@ -54,6 +57,18 @@ final class PoseSession {
     /// Ask for camera access and start capture. Idempotent.
     func start() async {
         guard !running else { return }
+
+        // Simulator self-test: no camera exists, so drive the pipeline from fabricated
+        // pose instead. Inert unless launched with `--synthetic-pose` (see the driver).
+        if SyntheticPoseDriver.isEnabled {
+            let driver = SyntheticPoseDriver(model: model)
+            synthetic = driver
+            driver.start()
+            cameraAuthorized = true
+            running = true
+            return
+        }
+
         cameraAuthorized = await CameraController.requestAccess()
         guard cameraAuthorized else {
             model.guidance = "Camera access is required. Enable it in Settings."
@@ -66,6 +81,8 @@ final class PoseSession {
 
     func stop() {
         guard running else { return }
+        synthetic?.stop()
+        synthetic = nil
         camera.stop()
         running = false
     }

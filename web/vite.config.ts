@@ -28,15 +28,30 @@ export default defineConfig(({ command }) => ({
   },
   plugins: [
     {
-      // CRITICAL for the bundled "pure app": Vite adds `crossorigin` to the emitted
-      // <script type=module> (and modulepreload) tags. Over http that's fine, but the
-      // iOS app loads the build from a file:// URL in a WKWebView, where `crossorigin`
-      // forces a CORS check that FAILS for file: origins — so the module never
-      // executes and the game is a blank black screen (no JS, no diagnostics). Strip
-      // the attribute from the HTML so the file:// load runs. No effect on the game.
-      name: "strip-crossorigin-for-file-url",
-      transformIndexHtml(html: string) {
-        return html.replace(/\s+crossorigin(?:=(?:"[^"]*"|'[^']*'|\S+))?/g, "");
+      // CRITICAL for the bundled "pure app": the iOS app loads the build from a file://
+      // URL in a WKWebView, which REFUSES to load an external `<script type=module src>`
+      // from file: (module fetches use CORS semantics that fail for file origins) — the
+      // module never executes and the game is a blank black screen (no JS, no diagnostics).
+      // Fix: INLINE the entry chunk straight into index.html. An inline module script has
+      // no fetch, so there's no CORS check and it runs from file://. Only applies to the
+      // build (ctx.bundle present); the http dev server is untouched.
+      name: "inline-entry-for-file-url",
+      enforce: "post",
+      transformIndexHtml(html: string, ctx: { bundle?: Record<string, { type: string; code?: string }> }) {
+        const bundle = ctx.bundle;
+        if (!bundle) return html; // dev server — leave the normal <script src> in place
+        return html.replace(
+          /<script\b[^>]*\bsrc="\.?\/?([^"]+)"[^>]*><\/script>/g,
+          (match: string, src: string) => {
+            const chunk = bundle[src];
+            if (chunk && chunk.type === "chunk" && chunk.code) {
+              // Drop the now-inlined chunk so it isn't also emitted as a separate file.
+              delete bundle[src];
+              return `<script type="module">\n${chunk.code}</script>`;
+            }
+            return match;
+          },
+        );
       },
     },
   ],
