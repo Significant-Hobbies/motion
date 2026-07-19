@@ -27,6 +27,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-07-19** — Added privacy-safe Foundry evidence automation: `scripts/foundry-evidence.sh` generates `foundry-evidence.json` distinguishing source/build, simulator, signing, physical-device, and deployment states (no camera frames, motion samples, or device identifiers). Added `foundry-evidence.yml` CI workflow (macOS runner, uploads 30-day artifact). Motion is recorded as **intentionally undeployed** with signing + device blockers. See `docs/foundry-evidence.md`.
 - **2026-07-18** — Repo created under fleet root. Built browser-first MVP (relay +
   browser + iOS), then **pivoted to the v1 serverless single-device POC** per product
   direction: phone renders the game (reusing the web game in a `WKWebView` via an
@@ -92,6 +93,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   prompt.
 
 ### Todo (next)
+- **Foundry evidence automation shipped (2026-07-19):** `scripts/foundry-evidence.sh`
+  + `foundry-evidence.yml` CI workflow generate privacy-safe build/simulator/
+  signing/device/deploy evidence. Signing + device blockers recorded honestly;
+  deploy state is `intentionally_undeployed`. See `docs/foundry-evidence.md`.
 - Run on a physical iPhone (plug in device, set signing team) and clear the
   device-only verify list. The Simulator build already passes.
 - Playtest **control feel** with the keyboard-debug controller and on-device; tune
