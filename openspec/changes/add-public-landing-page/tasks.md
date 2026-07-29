@@ -21,5 +21,5 @@
 - [x] 4.1 Validate the OpenSpec change and run the smallest relevant project checks
 - [x] 4.2 Capture 390, 768, and 1440 pixel browser evidence and complete critique, polish, and audit
 - [x] 4.3 Record owner feedback and pass the Fleet design-review receipt
-- [ ] 4.4 Push and merge the reviewable pull request linked to GitHub issue 7
-- [ ] 4.5 Release the static landing at `motion.significanthobbies.com` and verify no internal routes are exposed
+- [x] 4.4 Push and merge the reviewable pull request linked to GitHub issue 7
+- [x] 4.5 Release the static landing at `motion.significanthobbies.com` and verify no internal routes are exposed

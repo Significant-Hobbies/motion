@@ -27,7 +27,11 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
-- **2026-07-19** — Added privacy-safe Foundry evidence automation: `scripts/foundry-evidence.sh` generates `foundry-evidence.json` distinguishing source/build, simulator, signing, physical-device, and deployment states (no camera frames, motion samples, or device identifiers). Added `foundry-evidence.yml` CI workflow (macOS runner, uploads 30-day artifact). Motion is recorded as **intentionally undeployed** with signing + device blockers. See `docs/foundry-evidence.md`.
+- **2026-07-29** — Released the public Motion product landing at
+  [motion.significanthobbies.com](https://motion.significanthobbies.com) on
+  Cloudflare Pages. The release includes agent-readable discovery surfaces and
+  deliberately excludes the internal game, camera, and room routes.
+- **2026-07-19** — Added privacy-safe Foundry evidence automation: `scripts/foundry-evidence.sh` generates `foundry-evidence.json` distinguishing source/build, simulator, signing, physical-device, and deployment states (no camera frames, motion samples, or device identifiers). Added `foundry-evidence.yml` CI workflow (macOS runner, uploads 30-day artifact). The internal iOS/game application is recorded as **intentionally undeployed** with signing + device blockers. See `docs/foundry-evidence.md`.
 - **2026-07-18** — Repo created under fleet root. Built browser-first MVP (relay +
   browser + iOS), then **pivoted to the v1 serverless single-device POC** per product
   direction: phone renders the game (reusing the web game in a `WKWebView` via an
@@ -39,9 +43,16 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 - **Motion v1 POC** — one iPhone, on-phone game (*Motion Maker*, the grab/toss
   playground the bridge transport runs), mirror to a TV.
+- **Public product landing** — a static introduction for people interested in
+  games, live at
+  [motion.significanthobbies.com](https://motion.significanthobbies.com).
 
 ## Features (shipped)
 
+- **Public landing** — responsive static product story with the existing Motion
+  logo, canonical/share metadata, `llms.txt`, `index.md`, and `/api/ai`.
+  Security headers prohibit camera, microphone, and geolocation access; internal
+  `/play`, `/camera`, and `/room` routes return 404.
 - **`protocol/`** — v1 wire/bridge message shapes (pose packet, tracking, calib);
   recording-transfer messages retained for the v2 relay path.
 - **`web/` — reusable game SDK.** Game-agnostic `sdk/` (room, `BodyController`,
