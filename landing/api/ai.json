@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "name": "Motion",
+  "canonicalUrl": "https://motion.significanthobbies.com/",
+  "summary": "An experiment in body-controlled games where an iPhone reads movement on-device and turns it into game input.",
+  "audience": "People interested in games and new ways to play.",
+  "mechanism": [
+    "An iPhone camera observes movement.",
+    "Apple Vision extracts pose data on-device.",
+    "Pose data becomes game input.",
+    "The game renders on the phone and may be mirrored to a larger screen."
+  ],
+  "privacy": {
+    "cameraFramesTransmitted": false,
+    "cameraFramesStored": false,
+    "publicSiteRequestsCamera": false,
+    "publicSiteHasTrackingPixel": false
+  },
+  "status": {
+    "stage": "prototype",
+    "implemented": [
+      "Three game modes",
+      "Browser game",
+      "iPhone host",
+      "On-device pose bridge"
+    ],
+    "verified": [
+      "iOS simulator compilation",
+      "iOS simulator launch and rendering"
+    ],
+    "unverified": [
+      "Physical-iPhone camera tracking",
+      "Physical-device joint mapping",
+      "TV mirroring",
+      "ReplayKit recording"
+    ],
+    "publiclyPlayable": false,
+    "downloadable": false,
+    "appStoreAvailable": false
+  },
+  "owner": {
+    "name": "Significant Hobbies",
+    "url": "https://significanthobbies.com/"
+  },
+  "agentEntrypoints": {
+    "llms": "https://motion.significanthobbies.com/llms.txt",
+    "markdown": "https://motion.significanthobbies.com/index.md",
+    "json": "https://motion.significanthobbies.com/api/ai"
+  }
+}

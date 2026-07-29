@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-29T10:04:24Z",
+  "title": "Design System: Motion",
+  "extensions": {
+    "colorMeta": {
+      "night": {
+        "role": "neutral",
+        "displayName": "Night Field",
+        "canonical": "#05070d",
+        "tonalRamp": ["#05070d", "#0a0d15", "#111827", "#1c2638", "#344056", "#606d84", "#a8b1c1", "#eef1f6"]
+      },
+      "panel": {
+        "role": "neutral",
+        "displayName": "Control Panel",
+        "canonical": "#0d1220",
+        "tonalRamp": ["#080b13", "#0d1220", "#161d31", "#26304a", "#424e6b", "#6f7b96", "#b0b8c8", "#f0f2f6"]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Screen Ink",
+        "canonical": "#f4f7ff",
+        "tonalRamp": ["#14171d", "#282d38", "#454d5d", "#687286", "#9099aa", "#b8bfcc", "#dce1ea", "#f4f7ff"]
+      },
+      "muted": {
+        "role": "neutral",
+        "displayName": "Distance Blue",
+        "canonical": "#8a95b5",
+        "tonalRamp": ["#141925", "#252e45", "#3c496b", "#58678d", "#7886aa", "#9da8c2", "#c6ccdc", "#f0f2f7"]
+      },
+      "motion-teal": {
+        "role": "primary",
+        "displayName": "Tracking Teal",
+        "canonical": "#35e0c8",
+        "tonalRamp": ["#052923", "#075044", "#087965", "#0ca58a", "#20cdb0", "#54e6d2", "#9af2e7", "#e1fcf7"]
+      },
+      "impact-red": {
+        "role": "secondary",
+        "displayName": "Impact Red",
+        "canonical": "#ff4d6d",
+        "tonalRamp": ["#310912", "#5d1021", "#8d1932", "#bc2746", "#e23a5a", "#ff6f88", "#ffadba", "#ffe6eb"]
+      },
+      "warning": {
+        "role": "secondary",
+        "displayName": "Ready Yellow",
+        "canonical": "#ffcc33",
+        "tonalRamp": ["#2e2102", "#5a4104", "#8b6506", "#bd8d0b", "#e8b51b", "#ffd758", "#ffe9a1", "#fff8df"]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Arcade Display",
+        "purpose": "One short product or game statement."
+      },
+      "body": {
+        "displayName": "Screen Body",
+        "purpose": "Plain-language mechanism and evidence copy."
+      },
+      "label": {
+        "displayName": "State Label",
+        "purpose": "Uppercase sequence and system labels."
+      }
+    },
+    "shadows": [
+      {
+        "name": "focused-panel",
+        "value": "0 24px 80px rgba(0, 0, 0, 0.55)",
+        "purpose": "One focused panel against the night field."
+      },
+      {
+        "name": "tracking-glow",
+        "value": "0 0 48px rgba(53, 224, 200, 0.22)",
+        "purpose": "Quiet illumination around active motion geometry."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state-ease",
+        "value": "cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Short state and hover transitions."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "compact",
+        "value": "640px"
+      },
+      {
+        "name": "split",
+        "value": "900px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The single next action on a marketing or game surface.",
+      "html": "<button class=\"ds-btn-primary\">SEE HOW MOTION WORKS</button>",
+      "css": ".ds-btn-primary { min-height: 48px; padding: 16px 22px; border: 0; border-radius: 12px; background: #35e0c8; color: #05070d; font: 700 12px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: .16em; text-transform: uppercase; cursor: pointer; transition: filter .18s cubic-bezier(.22,1,.36,1), box-shadow .18s cubic-bezier(.22,1,.36,1); } .ds-btn-primary:hover { filter: brightness(1.08); box-shadow: 0 0 32px rgba(53,224,200,.24); } .ds-btn-primary:focus-visible { outline: 3px solid #f4f7ff; outline-offset: 3px; }"
+    },
+    {
+      "name": "Focused Panel",
+      "kind": "card",
+      "refersTo": "panel",
+      "description": "A single explanatory surface against the game field.",
+      "html": "<section class=\"ds-panel\"><span>MOTION SYSTEM</span><strong>Your body is the controller.</strong></section>",
+      "css": ".ds-panel { display: grid; gap: 14px; padding: 32px; border: 1px solid rgba(255,255,255,.08); border-radius: 20px; background: #0d1220; color: #f4f7ff; box-shadow: 0 24px 80px rgba(0,0,0,.55); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; } .ds-panel span { color: #35e0c8; font-size: 12px; font-weight: 700; letter-spacing: .2em; } .ds-panel strong { font-size: 28px; line-height: 1.05; }"
+    },
+    {
+      "name": "State Label",
+      "kind": "chip",
+      "description": "Compact system or evidence label.",
+      "html": "<span class=\"ds-state\">ON-DEVICE VISION</span>",
+      "css": ".ds-state { display: inline-flex; align-items: center; min-height: 32px; padding: 8px 12px; border: 1px solid rgba(53,224,200,.35); border-radius: 999px; color: #35e0c8; background: rgba(53,224,200,.08); font: 700 11px/1 -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; letter-spacing: .15em; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Motion Arcade",
+    "overview": "Motion looks like a game waking up in a dark room. Its existing logo is the canonical visual idea: movement is visible as a trail, and the person is the input. The world stays near-black so motion, score, and state changes can carry the light.",
+    "keyCharacteristics": [
+      "Near-black fields with one luminous motion accent.",
+      "Human geometry and movement trails instead of decorative gradients.",
+      "Short, confident game language with large readable moments.",
+      "Red and yellow reserved for actual game state, never decoration.",
+      "The existing Motion logo is preserved exactly."
+    ],
+    "rules": [
+      {
+        "name": "The Tracking Signal Rule",
+        "body": "Teal identifies motion or the next action. It does not become a generic wash across every surface.",
+        "section": "colors"
+      },
+      {
+        "name": "The Across-the-Room Rule",
+        "body": "Important state and the primary action must remain legible at television distance.",
+        "section": "typography"
+      },
+      {
+        "name": "The Dark-Room Rule",
+        "body": "A surface earns elevation only when it focuses play or explanation.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do preserve web/public/motion-logo.png exactly.",
+      "Do use the motion trail to explain body-as-controller.",
+      "Do keep the page predominantly Night Field and reserve teal for motion and action.",
+      "Do label simulator evidence and physical-device gaps plainly."
+    ],
+    "donts": [
+      "Don't expose or link the internal web game, relay, room codes, or camera mode.",
+      "Don't add cyan-purple gradients, gaming HUD clutter, or generic esports typography.",
+      "Don't use Impact Red or Ready Yellow as decorative accents.",
+      "Don't fabricate live tracking, customers, testimonials, availability, or performance numbers."
+    ]
+  }
+}
