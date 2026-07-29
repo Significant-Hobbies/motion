@@ -27,6 +27,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-07-30** — Added and locally verified the owned `/changelog` source:
+  a newest-first public release trail using only confirmed milestones. The
+  surface omits Roadmap and Source links because the canonical repository is
+  private. Production deployment remains a separate manual step.
 - **2026-07-29** — Released the public Motion product landing at
   [motion.significanthobbies.com](https://motion.significanthobbies.com) on
   Cloudflare Pages. The release includes agent-readable discovery surfaces and
@@ -37,7 +41,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   direction: phone renders the game (reusing the web game in a `WKWebView` via an
   in-process pose bridge) and screen-mirrors to a TV; recording via ReplayKit. Relay
   + browser display + camera-composite recording parked for v2. Remote target:
-  **personal GitHub** (not the fleet org).
+  private [`Significant-Hobbies/motion`](https://github.com/Significant-Hobbies/motion).
 
 ## Products
 
@@ -50,7 +54,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 ## Features (shipped)
 
 - **Public landing** — responsive static product story with the existing Motion
-  logo, canonical/share metadata, `llms.txt`, `index.md`, and `/api/ai`.
+  logo, canonical/share metadata, `llms.txt`, `index.md`, `/api/ai`, and an
+  owned `/changelog` source with semantic dates and internal discovery.
   Security headers prohibit camera, microphone, and geolocation access; internal
   `/play`, `/camera`, and `/room` routes return 404.
 - **`protocol/`** — v1 wire/bridge message shapes (pose packet, tracking, calib);
@@ -85,6 +90,6 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Work queue
 
-Open work is tracked only in [GitHub Issues](https://github.com/sarthakagrawal927/motion/issues).
+Open work is tracked only in [GitHub Issues](https://github.com/Significant-Hobbies/motion/issues).
 An open issue is a to-do, a linked pull request is in progress, and merge plus
 issue closure makes the work done.

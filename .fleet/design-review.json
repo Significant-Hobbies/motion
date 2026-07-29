@@ -2,7 +2,7 @@
   "$schema": "fleet.design-review.v1",
   "version": 1,
   "project": "motion",
-  "target": "Motion public landing page",
+  "target": "Motion owned changelog route",
   "mode": "preserve",
   "register": "product",
   "context": {
@@ -14,21 +14,21 @@
     "probes": [],
     "selected": "existing-design",
     "approval": "not-required",
-    "before": "artifacts/design/before.png"
+    "before": "artifacts/design/after-1440.png"
   },
   "evidence": {
     "screenshots": [
       {
         "width": 390,
-        "path": "artifacts/design/after-390.png"
+        "path": "artifacts/design/changelog-after-390.png"
       },
       {
         "width": 768,
-        "path": "artifacts/design/after-768.png"
+        "path": "artifacts/design/changelog-after-768.png"
       },
       {
         "width": 1440,
-        "path": "artifacts/design/after-1440.png"
+        "path": "artifacts/design/changelog-after-1440.png"
       }
     ],
     "projectCheck": {
@@ -36,11 +36,11 @@
       "status": "pass"
     },
     "critique": {
-      "score": 34,
+      "score": 36,
       "maximum": 40
     },
     "audit": {
-      "score": 18,
+      "score": 19,
       "maximum": 20
     },
     "unresolved": {
@@ -49,15 +49,11 @@
     },
     "detector": {
       "posture": "advisory",
-      "findings": [
-        "22 advisory findings: 14 type-size, 5 radius, 3 color",
-        "Color drift promoted to documented tokens",
-        "Illustration radii and decorative type sizes documented as intentional exceptions"
-      ]
+      "findings": []
     }
   },
   "ownerFeedback": {
     "decision": "delegated",
-    "note": "Owner directed the landing to be built and released, explicitly preserved the original Motion logo, and delegated completion with go."
+    "note": "Owner explicitly requested implementation of Motion's owned changelog while preserving the existing design direction."
   }
 }

@@ -9,6 +9,7 @@ const landing = path.join(root, "landing");
 
 const required = [
   "index.html",
+  "changelog.html",
   "404.html",
   "styles.css",
   "llms.txt",
@@ -23,13 +24,26 @@ const required = [
 
 await Promise.all(required.map((file) => stat(path.join(landing, file))));
 
-const [html, css, llms, markdown, redirects, ai, sourceLogo, publicLogo] =
+const [
+  html,
+  changelog,
+  css,
+  llms,
+  markdown,
+  redirects,
+  sitemap,
+  ai,
+  sourceLogo,
+  publicLogo,
+] =
   await Promise.all([
     readFile(path.join(landing, "index.html"), "utf8"),
+    readFile(path.join(landing, "changelog.html"), "utf8"),
     readFile(path.join(landing, "styles.css"), "utf8"),
     readFile(path.join(landing, "llms.txt"), "utf8"),
     readFile(path.join(landing, "index.md"), "utf8"),
     readFile(path.join(landing, "_redirects"), "utf8"),
+    readFile(path.join(landing, "sitemap.xml"), "utf8"),
     readFile(path.join(landing, "api/ai.json"), "utf8").then(JSON.parse),
     readFile(path.join(root, "web/public/motion-logo.png")),
     readFile(path.join(landing, "assets/motion-logo.png")),
@@ -42,15 +56,33 @@ assert.match(html, /Camera frames are not transmitted or stored/);
 assert.match(css, /prefers-reduced-motion/);
 assert.match(css, /:focus-visible/);
 assert.match(redirects, /^\/api\/ai \/api\/ai\.json 200/m);
+assert.match(html, /href=["']\/changelog["']/);
+assert.match(
+  changelog,
+  /<link\s+rel="canonical"\s+href="https:\/\/motion\.significanthobbies\.com\/changelog"/,
+);
+assert.match(changelog, /<title>Changelog — Motion<\/title>/);
+assert.equal((changelog.match(/<h1(?:\s|>)/g) ?? []).length, 1);
+assert.equal((changelog.match(/<time datetime="\d{4}-\d{2}-\d{2}">/g) ?? []).length, 3);
+assert.match(sitemap, /https:\/\/motion\.significanthobbies\.com\/changelog/);
 
-for (const text of [html, llms, markdown, JSON.stringify(ai)]) {
+for (const text of [html, changelog, llms, markdown, JSON.stringify(ai)]) {
   assert.doesNotMatch(text, /href=["']\/play|debug=1|camera=1|room=|127\.0\.0\.1|localhost/i);
+  assert.doesNotMatch(
+    text,
+    /github\.com\/Significant-Hobbies\/motion/i,
+    "private repository URLs must not appear on public surfaces",
+  );
 }
 
 assert.equal(ai.canonicalUrl, "https://motion.significanthobbies.com/");
 assert.equal(ai.status.publiclyPlayable, false);
 assert.equal(ai.privacy.cameraFramesTransmitted, false);
 assert.equal(ai.privacy.publicSiteRequestsCamera, false);
+assert.equal(
+  ai.agentEntrypoints.changelog,
+  "https://motion.significanthobbies.com/changelog",
+);
 
 const digest = (buffer) => createHash("sha256").update(buffer).digest("hex");
 assert.equal(digest(sourceLogo), digest(publicLogo), "public logo must remain unchanged");

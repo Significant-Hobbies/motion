@@ -51,8 +51,9 @@ require a console, wearable sensor, or uploaded camera stream.
   tracking.
 - The iOS app compiles and launches in the simulator. Physical-device camera,
   joint-mapping, mirroring, and ReplayKit behavior remain unverified.
-- There is no App Store release, pricing, account system, analytics, or public
-  deployment.
+- The public product landing is deployed at
+  `motion.significanthobbies.com`. There is no App Store release, pricing,
+  account system, analytics, or public deployment of the internal game.
 
 ## Brand Commitments
 

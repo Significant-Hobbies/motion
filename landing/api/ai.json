@@ -43,6 +43,7 @@
     "url": "https://significanthobbies.com/"
   },
   "agentEntrypoints": {
+    "changelog": "https://motion.significanthobbies.com/changelog",
     "llms": "https://motion.significanthobbies.com/llms.txt",
     "markdown": "https://motion.significanthobbies.com/index.md",
     "json": "https://motion.significanthobbies.com/api/ai"

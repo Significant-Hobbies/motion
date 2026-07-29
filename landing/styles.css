@@ -630,10 +630,163 @@ footer a {
   text-underline-offset: 4px;
 }
 
-footer > p a {
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.footer-links a {
   display: inline-flex;
   align-items: center;
   min-height: 44px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.footer-links a:hover {
+  color: var(--ink);
+}
+
+.changelog-main {
+  overflow: hidden;
+}
+
+.changelog-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(280px, 0.55fr);
+  gap: clamp(48px, 9vw, 140px);
+  align-items: end;
+  width: min(calc(100% - 40px), var(--max));
+  min-height: 510px;
+  margin: 0 auto;
+  padding: 96px 0 88px;
+}
+
+.changelog-intro h1 {
+  max-width: 9ch;
+  font-size: clamp(4rem, 8vw, 6rem);
+  line-height: 0.9;
+}
+
+.changelog-lede {
+  padding-bottom: 4px;
+}
+
+.changelog-lede > p:first-child {
+  max-width: 34rem;
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1.05rem, 1.5vw, 1.2rem);
+  line-height: 1.68;
+}
+
+.changelog-boundary {
+  margin: 28px 0 0;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  color: var(--ink);
+  font-size: 0.78rem;
+  font-weight: 750;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.release-trail {
+  padding: 0 max(20px, calc((100% - var(--max)) / 2)) 112px;
+  background: var(--panel);
+}
+
+.release-trail ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: releases;
+}
+
+.release-trail li {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(120px, 0.32fr) minmax(0, 1fr);
+  gap: clamp(32px, 7vw, 110px);
+  padding: 72px 0;
+  border-top: 1px solid var(--line);
+  counter-increment: releases;
+}
+
+.release-trail li::before {
+  position: absolute;
+  top: 70px;
+  right: 0;
+  content: "0" counter(releases);
+  color: rgba(244, 247, 255, 0.05);
+  font-size: clamp(5rem, 12vw, 10rem);
+  font-weight: 820;
+  letter-spacing: -0.04em;
+  line-height: 0.72;
+  pointer-events: none;
+}
+
+.release-trail time {
+  position: relative;
+  z-index: 1;
+  color: var(--teal);
+  font-size: 0.76rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.release-trail li > div {
+  position: relative;
+  z-index: 1;
+  max-width: 46rem;
+}
+
+.release-kicker {
+  margin: 0 0 14px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.release-trail h2,
+.changelog-return h2 {
+  margin: 0;
+  font-size: clamp(2.15rem, 4.8vw, 4.3rem);
+  font-weight: 810;
+  letter-spacing: -0.04em;
+  line-height: 0.96;
+}
+
+.release-trail h2 {
+  max-width: 14ch;
+}
+
+.release-trail li > div > p:last-child {
+  max-width: 39rem;
+  margin: 28px 0 0;
+  color: var(--muted);
+  line-height: 1.72;
+}
+
+.changelog-return {
+  width: min(calc(100% - 40px), var(--max));
+  margin: 0 auto;
+  padding: 112px 0 24px;
+}
+
+.changelog-return h2 {
+  max-width: 12ch;
+}
+
+.changelog-return .secondary-action {
+  margin-top: 40px;
 }
 
 @keyframes stage-in {
@@ -657,7 +810,8 @@ footer > p a {
 
   .section-intro,
   .proof,
-  .fit {
+  .fit,
+  .changelog-intro {
     grid-template-columns: 1fr;
   }
 
@@ -683,6 +837,10 @@ footer > p a {
 
   .proof-ledger {
     margin-top: 8px;
+  }
+
+  .changelog-intro {
+    align-content: end;
   }
 }
 
@@ -762,6 +920,44 @@ footer > p a {
     gap: 10px;
   }
 
+  .changelog-intro,
+  .changelog-return {
+    width: min(calc(100% - 28px), var(--max));
+  }
+
+  .changelog-intro {
+    min-height: 480px;
+    padding: 64px 0 72px;
+  }
+
+  .changelog-intro h1 {
+    font-size: clamp(4rem, 20vw, 5.25rem);
+  }
+
+  .release-trail {
+    padding-right: 14px;
+    padding-left: 14px;
+  }
+
+  .release-trail li {
+    grid-template-columns: 1fr;
+    gap: 24px;
+    padding: 56px 0 64px;
+  }
+
+  .release-trail li::before {
+    top: 54px;
+    font-size: 6.5rem;
+  }
+
+  .release-trail h2 {
+    font-size: clamp(2.35rem, 12vw, 3.4rem);
+  }
+
+  .changelog-return {
+    padding-top: 88px;
+  }
+
   footer {
     align-items: flex-start;
     flex-direction: column;
@@ -772,6 +968,12 @@ footer > p a {
   footer > div {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .footer-links {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 0;
   }
 }
 

@@ -23,5 +23,6 @@ Canonical URL: https://motion.significanthobbies.com/
 
 ## Agent entrypoints
 
+- https://motion.significanthobbies.com/changelog
 - https://motion.significanthobbies.com/index.md
 - https://motion.significanthobbies.com/api/ai

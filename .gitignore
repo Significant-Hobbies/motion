@@ -1,5 +1,6 @@
 # Node
 node_modules/
+.wrangler/
 dist/
 .parcel-cache/
 *.tsbuildinfo

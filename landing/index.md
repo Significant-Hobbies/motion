@@ -26,6 +26,14 @@ system or tracking pixel.
   recording remain unverified.
 - Motion is not downloadable, publicly playable, or available in an app store.
 
+## Changelog
+
+Verified, visitor-facing milestones are published newest first at:
+https://motion.significanthobbies.com/changelog
+
+Future work and private development notes are intentionally omitted until they
+ship.
+
 ## Ownership
 
 Motion is a Significant Hobbies experiment:
