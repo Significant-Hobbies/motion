@@ -1,21 +1,21 @@
 ## ADDED Requirements
 
 ### Requirement: First viewport explains Motion
-The landing SHALL state the primary audience, concrete outcome, product
-mechanism, and one primary next action without requiring a scroll.
+The landing SHALL address people interested in games, state the concrete
+outcome and product mechanism, and provide one primary next action without
+requiring a scroll.
 
 #### Scenario: Visitor opens the landing
 - **WHEN** a visitor loads the public root page
-- **THEN** the first viewport identifies Motion as body-controlled play driven by an iPhone and offers one clearly labelled action
+- **THEN** the first viewport identifies Motion as body-controlled play driven by an iPhone and offers one clearly labelled action without framing it as a developer tool or kids-only product
 
-### Requirement: Public demo uses the real game build
-The site SHALL provide a browser demonstration assembled from the existing web
-game output and SHALL label mouse or keyboard control separately from iPhone
-body tracking.
+### Requirement: Marketing visual remains presentational
+The site SHALL use a purpose-built marketing visual to explain body-controlled
+play and SHALL NOT expose, embed, or link to the internal game.
 
-#### Scenario: Visitor opens the browser demo
-- **WHEN** a visitor follows the primary demonstration action
-- **THEN** the existing game runs in browser debug mode without requiring a phone or implying that debug input is camera tracking
+#### Scenario: Visitor views the product illustration
+- **WHEN** a visitor sees the motion figure or gameplay composition
+- **THEN** the page presents it as an illustration without camera access, live tracking, or an internal application route
 
 ### Requirement: Landing does not change the iOS game contract
 The landing build MUST leave the existing web workspace output semantics,
@@ -23,7 +23,7 @@ relative asset base, inline entry, pose protocol, and Swift bridge unchanged.
 
 #### Scenario: Landing bundle is built
 - **WHEN** the public deployment bundle is assembled
-- **THEN** the web workspace is built through its existing command and copied unchanged beneath the landing output
+- **THEN** only the dedicated landing directory is included and the internal web workspace remains untouched
 
 ### Requirement: Product claims are evidence bounded
 The landing SHALL distinguish browser and simulator evidence from unverified
@@ -60,10 +60,11 @@ pixel viewport widths.
 - **WHEN** a visitor navigates by keyboard or prefers reduced motion
 - **THEN** all actions remain reachable with visible focus and nonessential motion is removed
 
-### Requirement: Release remains separately approved
-The change SHALL prepare deployable source without creating DNS, deploying a
-Cloudflare surface, or changing production traffic.
+### Requirement: Release exposes only the landing
+The change SHALL release the static landing at
+`motion.significanthobbies.com` without publishing internal application assets
+or routes.
 
-#### Scenario: Implementation is merged
-- **WHEN** the landing implementation reaches the main branch
-- **THEN** no public hostname or production deployment changes solely because of the merge
+#### Scenario: Production hostname is opened
+- **WHEN** a visitor loads `motion.significanthobbies.com`
+- **THEN** the visitor receives the public landing and cannot navigate to the internal game, relay, or camera surfaces

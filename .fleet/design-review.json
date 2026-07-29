@@ -1,0 +1,63 @@
+{
+  "$schema": "fleet.design-review.v1",
+  "version": 1,
+  "project": "motion",
+  "target": "Motion public landing page",
+  "mode": "preserve",
+  "register": "product",
+  "context": {
+    "product": "PRODUCT.md",
+    "design": "DESIGN.md"
+  },
+  "direction": {
+    "references": [],
+    "probes": [],
+    "selected": "existing-design",
+    "approval": "not-required",
+    "before": "artifacts/design/before.png"
+  },
+  "evidence": {
+    "screenshots": [
+      {
+        "width": 390,
+        "path": "artifacts/design/after-390.png"
+      },
+      {
+        "width": 768,
+        "path": "artifacts/design/after-768.png"
+      },
+      {
+        "width": 1440,
+        "path": "artifacts/design/after-1440.png"
+      }
+    ],
+    "projectCheck": {
+      "command": "node scripts/check-landing.mjs && npm run typecheck && npm run build && openspec validate add-public-landing-page --strict",
+      "status": "pass"
+    },
+    "critique": {
+      "score": 34,
+      "maximum": 40
+    },
+    "audit": {
+      "score": 18,
+      "maximum": 20
+    },
+    "unresolved": {
+      "p0": 0,
+      "p1": 0
+    },
+    "detector": {
+      "posture": "advisory",
+      "findings": [
+        "22 advisory findings: 14 type-size, 5 radius, 3 color",
+        "Color drift promoted to documented tokens",
+        "Illustration radii and decorative type sizes documented as intentional exceptions"
+      ]
+    }
+  },
+  "ownerFeedback": {
+    "decision": "delegated",
+    "note": "Owner directed the landing to be built and released, explicitly preserved the original Motion logo, and delegated completion with go."
+  }
+}

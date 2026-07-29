@@ -1,0 +1,27 @@
+# Motion
+
+> Motion is an experiment in body-controlled games where an iPhone reads
+> movement on-device and turns it into game input.
+
+Canonical URL: https://motion.significanthobbies.com/
+
+## Product
+
+- Audience: people interested in games and new ways to play
+- Mechanism: iPhone camera -> on-device Apple Vision pose extraction -> game input
+- Display: game renders on the phone and may be mirrored to a larger screen
+- Privacy: camera frames are neither transmitted nor stored
+- Status: prototype; not downloadable or publicly playable
+- Evidence: browser game and iOS host implemented; simulator compile and launch verified
+- Outstanding: physical-iPhone tracking, mirroring, joint mapping, and recording validation
+
+## Important boundaries
+
+- The public website is a landing page, not the game.
+- The internal game, relay, room codes, and camera mode are not public.
+- Motion has no public pricing, customers, testimonials, App Store release, or production-readiness claim.
+
+## Agent entrypoints
+
+- https://motion.significanthobbies.com/index.md
+- https://motion.significanthobbies.com/api/ai
