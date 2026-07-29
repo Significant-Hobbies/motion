@@ -72,41 +72,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   auto-prefers it, so the app runs on a phone with **no dev server / Mac network**.
   Verified: `webgame/` ships in the built `.app` and the app launches clean.
 
-## Todo / Planned / Deferred / Blocked
+## Work queue
 
-### iOS build — VERIFIED COMPILES (2026-07-18)
-- The iOS app **compiles cleanly for the iOS 27 Simulator** (Xcode 27, `xcodegen
-  generate` + `xcodebuild`, `CODE_SIGNING_ALLOWED=NO`). Two compiler-caught bugs
-  fixed: a `private(set)` `ready` write in `GameWebView`, and a Swift-6 illegal
-  `NSLock.lock()` in an async context in the parked `CameraRecorder`.
-- Remaining: warnings only — non-`Sendable` `CMSampleBuffer`/`AVAssetWriter` captures
-  in `@Sendable` closures, and iOS-27 `AVAssetWriter` API deprecations (still valid on
-  iOS 17+). Non-blocking; tidy later.
-
-### Blocked / must-verify on a physical device (Simulator has no camera)
-- **ReplayKit captures the `WKWebView` game content** (out-of-process render) — the
-  single biggest unknown; if the canvas records blank, fall back to a bundled
-  `file://` load or a native-rendered camera-inset+HUD (TODO in `ScreenRecorder.swift`).
-- ReplayKit captures the `AVCaptureVideoPreviewLayer` camera inset (not black).
-- Vision **left/right joint mapping** matches the real player (front-camera mirror).
-- Camera + Photos-add permission prompts; the http LAN dev-server load + local-network
-  prompt.
-
-### Todo (next)
-- **Foundry evidence automation shipped (2026-07-19):** `scripts/foundry-evidence.sh`
-  + `foundry-evidence.yml` CI workflow generate privacy-safe build/simulator/
-  signing/device/deploy evidence. Signing + device blockers recorded honestly;
-  deploy state is `intentionally_undeployed`. See `docs/foundry-evidence.md`.
-- Run on a physical iPhone (plug in device, set signing team) and clear the
-  device-only verify list. The Simulator build already passes.
-- Playtest **control feel** with the keyboard-debug controller and on-device; tune
-  smoothing / grab-reach / release thresholds until grabbing and tossing objects in
-  Motion Maker feels good (and, for Reach & Dodge, target size / obstacle speed).
-- ~~Bundle `web/dist` into the app for a self-contained "pure app"~~ — done.
-- ~~Create the personal GitHub repo and push~~ — done (github.com/sarthakagrawal927/motion, private).
-
-### Deferred → v2
-- PartyKit relay + rooms; browser display; **Chromecast Cast-receiver** (low-latency,
-  pose-only) and AirPlay second-screen; 1–4 player multiplayer + lobby; camera+gameplay
-  composite recording over the relay; accounts/profiles; extra games (Reach Rush,
-  Dodge Lane, Knee Beats, Pose Party).
+Open work is tracked only in [GitHub Issues](https://github.com/sarthakagrawal927/motion/issues).
+An open issue is a to-do, a linked pull request is in progress, and merge plus
+issue closure makes the work done.
