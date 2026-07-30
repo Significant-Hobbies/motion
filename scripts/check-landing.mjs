@@ -64,15 +64,12 @@ assert.match(
 assert.match(changelog, /<title>Changelog — Motion<\/title>/);
 assert.equal((changelog.match(/<h1(?:\s|>)/g) ?? []).length, 1);
 assert.equal((changelog.match(/<time datetime="\d{4}-\d{2}-\d{2}">/g) ?? []).length, 3);
+assert.match(changelog, /https:\/\/github\.com\/Significant-Hobbies\/motion\/issues/);
+assert.match(changelog, /https:\/\/github\.com\/Significant-Hobbies\/motion/);
 assert.match(sitemap, /https:\/\/motion\.significanthobbies\.com\/changelog/);
 
 for (const text of [html, changelog, llms, markdown, JSON.stringify(ai)]) {
   assert.doesNotMatch(text, /href=["']\/play|debug=1|camera=1|room=|127\.0\.0\.1|localhost/i);
-  assert.doesNotMatch(
-    text,
-    /github\.com\/Significant-Hobbies\/motion/i,
-    "private repository URLs must not appear on public surfaces",
-  );
 }
 
 assert.equal(ai.canonicalUrl, "https://motion.significanthobbies.com/");

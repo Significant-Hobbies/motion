@@ -27,10 +27,13 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-07-30** — Made the canonical GitHub repository publicly readable and
+  added its Roadmap and Source links to the owned changelog. This changes
+  source visibility only; it does not deploy the internal app or grant a
+  project-wide software license.
 - **2026-07-30** — Added and locally verified the owned `/changelog` source:
-  a newest-first public release trail using only confirmed milestones. The
-  surface omits Roadmap and Source links because the canonical repository is
-  private. Production deployment remains a separate manual step.
+  a newest-first public release trail using only confirmed milestones.
+  Production deployment remains a separate manual step.
 - **2026-07-29** — Released the public Motion product landing at
   [motion.significanthobbies.com](https://motion.significanthobbies.com) on
   Cloudflare Pages. The release includes agent-readable discovery surfaces and
@@ -41,7 +44,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   direction: phone renders the game (reusing the web game in a `WKWebView` via an
   in-process pose bridge) and screen-mirrors to a TV; recording via ReplayKit. Relay
   + browser display + camera-composite recording parked for v2. Remote target:
-  private [`Significant-Hobbies/motion`](https://github.com/Significant-Hobbies/motion).
+  [`Significant-Hobbies/motion`](https://github.com/Significant-Hobbies/motion).
 
 ## Products
 
@@ -50,6 +53,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - **Public product landing** — a static introduction for people interested in
   games, live at
   [motion.significanthobbies.com](https://motion.significanthobbies.com).
+- **Public source** —
+  [`Significant-Hobbies/motion`](https://github.com/Significant-Hobbies/motion),
+  with open work tracked in
+  [GitHub Issues](https://github.com/Significant-Hobbies/motion/issues).
 
 ## Features (shipped)
 
