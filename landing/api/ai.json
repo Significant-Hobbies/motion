@@ -1,6 +1,8 @@
 {
+  "version": "1",
   "schemaVersion": 1,
   "name": "Motion",
+  "url": "https://motion.significanthobbies.com",
   "canonicalUrl": "https://motion.significanthobbies.com/",
   "summary": "An experiment in body-controlled games where an iPhone reads movement on-device and turns it into game input.",
   "audience": "People interested in games and new ways to play.",
@@ -42,9 +44,36 @@
     "name": "Significant Hobbies",
     "url": "https://significanthobbies.com/"
   },
+  "llms": "https://motion.significanthobbies.com/llms.txt",
+  "llmsFull": "https://motion.significanthobbies.com/llms-full.txt",
+  "sitemap": "https://motion.significanthobbies.com/sitemap.xml",
+  "markdown": {
+    "suffix": ".md",
+    "negotiation": false
+  },
+  "surfaces": [
+    {
+      "id": "home",
+      "title": "Motion",
+      "url": "https://motion.significanthobbies.com/",
+      "md": "https://motion.significanthobbies.com/index.md"
+    },
+    {
+      "id": "changelog",
+      "title": "Motion changelog",
+      "url": "https://motion.significanthobbies.com/changelog",
+      "md": "https://motion.significanthobbies.com/changelog.md"
+    }
+  ],
+  "auth": {
+    "public": true,
+    "notes": "The public landing page and changelog are readable without authentication. Internal game, camera, and room routes are intentionally excluded."
+  },
   "agentEntrypoints": {
     "changelog": "https://motion.significanthobbies.com/changelog",
+    "changelogMarkdown": "https://motion.significanthobbies.com/changelog.md",
     "llms": "https://motion.significanthobbies.com/llms.txt",
+    "llmsFull": "https://motion.significanthobbies.com/llms-full.txt",
     "markdown": "https://motion.significanthobbies.com/index.md",
     "json": "https://motion.significanthobbies.com/api/ai"
   }
