@@ -1,7 +1,9 @@
 # Motion — Agent Instructions
 
-Child project of the fleet. Follow the root fleet standard (`../AGENTS.md`) plus
-these project rules.
+This repository is independently operable. Its tracked instructions and
+commands are authoritative; no sibling Fleet checkout is required. Keep changes
+scoped, verify work with repo-local checks, and record durable follow-up in this
+repository's GitHub Issues.
 
 ## Architecture in one breath
 
