@@ -27,6 +27,9 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-07-31** — Extended the existing product-specific agent catalog with a
+  full brief and changelog Markdown mirror while preserving the prototype and
+  privacy boundaries; production deployment remains separate.
 - **2026-07-30** — Made the canonical GitHub repository publicly readable and
   added its Roadmap and Source links to the owned changelog. This changes
   source visibility only; it does not deploy the internal app or grant a

@@ -44,7 +44,9 @@
   },
   "agentEntrypoints": {
     "changelog": "https://motion.significanthobbies.com/changelog",
+    "changelogMarkdown": "https://motion.significanthobbies.com/changelog.md",
     "llms": "https://motion.significanthobbies.com/llms.txt",
+    "llmsFull": "https://motion.significanthobbies.com/llms-full.txt",
     "markdown": "https://motion.significanthobbies.com/index.md",
     "json": "https://motion.significanthobbies.com/api/ai"
   }
