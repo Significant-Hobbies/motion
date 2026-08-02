@@ -32,7 +32,7 @@
       }
     ],
     "projectCheck": {
-      "command": "node scripts/check-landing.mjs && npm run typecheck && npm run build && openspec validate add-public-landing-page --strict",
+      "command": "node scripts/check-landing.mjs && pnpm run typecheck && pnpm run build && openspec validate add-public-landing-page --strict",
       "status": "pass"
     },
     "critique": {

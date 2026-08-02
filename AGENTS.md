@@ -54,11 +54,11 @@ before the single-player game is demonstrably enjoyable. The product risk is
 ## Verify locally
 
 ```bash
-npm install
-npm run dev            # relay :1999 + web :5173
+pnpm install
+pnpm run dev            # relay :1999 + web :5173
 # Reach & Dodge:  http://localhost:5173/?debug=1  → mouse=hands, arrows=lean, space=squat
 # Motion Maker:   http://localhost:5173/?game=motion-maker&debug=1  → mouse=a hand, hold left mouse/space=grab
-npm run typecheck
+pnpm run typecheck
 ```
 
 iOS builds only on a Mac with Xcode 16+ (`cd ios && xcodegen generate`). It

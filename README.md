@@ -48,8 +48,8 @@ The game is fully playable in a desktop browser with a keyboard/mouse debug
 controller — the quickest way to feel the games and iterate on them.
 
 ```bash
-npm install
-npm --workspace web run dev      # http://localhost:5173
+pnpm install
+pnpm --filter motion-web run dev      # http://localhost:5173
 ```
 
 - Open `http://localhost:5173/?debug=1` for **Reach & Dodge** (the plain-browser
@@ -74,7 +74,7 @@ app** (`ios/Resources/webgame`), so no dev server or Mac network is needed to pl
    TV / Chromecast (or use QuickTime over USB to view on the Mac).
 6. Tap **Record** to save a screen recording (game + your camera inset) to Photos.
 
-**Iterating on the web game from the phone?** Run `npm --workspace web run dev`, set
+**Iterating on the web game from the phone?** Run `pnpm --filter motion-web run dev`, set
 `GameConfig.forceDevServer = true`, point the app's dev-server IP at your Mac, and
 refresh the bundle after changes with `./scripts/sync-webgame.sh`.
 

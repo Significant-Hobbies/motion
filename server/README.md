@@ -21,9 +21,9 @@ truth) and are imported directly.
 ## Develop
 
 ```bash
-npm install
-npm run dev        # partykit dev — serves on http://localhost:1999
-npm run typecheck  # tsc --noEmit
+pnpm install
+pnpm run dev        # partykit dev — serves on http://localhost:1999
+pnpm run typecheck  # tsc --noEmit
 ```
 
 Both clients open a WebSocket to `ws://localhost:1999/parties/main/<CODE>` and send
@@ -33,7 +33,7 @@ a `join` (`{ v, type:"join", role }`) as their first message. Presence, relay, a
 ## Deploy
 
 ```bash
-npm run deploy     # partykit deploy
+pnpm run deploy     # partykit deploy
 ```
 
 PartyKit is now part of Cloudflare, so this can later target our own Cloudflare

@@ -44,10 +44,10 @@ and recording. Swapping the game is a one-line change in `app/main.ts`.
 ## Run
 
 ```bash
-npm install
-npm run dev          # vite dev server on http://localhost:5173
-npm run typecheck    # tsc --noEmit
-npm run build        # tsc && vite build
+pnpm install
+pnpm run dev          # vite dev server on http://localhost:5173
+pnpm run typecheck    # tsc --noEmit
+pnpm run build        # tsc && vite build
 ```
 
 The dev relay defaults to `http://127.0.0.1:1999` (PartyKit). Override with
