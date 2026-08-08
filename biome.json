@@ -1,0 +1,87 @@
+{
+  "$schema": "https://biomejs.dev/schemas/2.5.5/schema.json",
+  "extends": ["ultracite/biome/core"],
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "!**/node_modules",
+      "!**/dist",
+      "!**/build",
+      "!**/pnpm-lock.yaml",
+      "!ios",
+      "!artifacts",
+      "!foundry-evidence.json"
+    ]
+  },
+  "formatter": { "enabled": false },
+  "json": { "formatter": { "enabled": false } },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "a11y": { "useAriaPropsSupportedByRole": "off" },
+      "complexity": {
+        "noExcessiveCognitiveComplexity": "off",
+        "noForEach": "off",
+        "noUselessUndefined": "off",
+        "noVoid": "off",
+        "useSimplifiedLogicExpression": "off"
+      },
+      "correctness": {
+        "noUnusedPrivateClassMembers": "off",
+        "noUnusedVariables": "off"
+      },
+      "performance": {
+        "noAwaitInLoops": "off",
+        "noBarrelFile": "off",
+        "noDelete": "off",
+        "useTopLevelRegex": "off"
+      },
+      "style": {
+        "noDescendingSpecificity": "off",
+        "noIncrementDecrement": "off",
+        "noNegationElse": "off",
+        "noNestedTernary": "off",
+        "noNonNullAssertion": "off",
+        "noParameterProperties": "off",
+        "noUnusedTemplateLiteral": "off",
+        "useAtIndex": "off",
+        "useBlockStatements": "off",
+        "useCollapsedIf": "off",
+        "useConsistentMethodSignatures": "off",
+        "useConsistentTypeDefinitions": "off",
+        "useDefaultSwitchClause": "off",
+        "useDestructuring": "off",
+        "useNumberNamespace": "off",
+        "useNumericSeparators": "off",
+        "useReadonlyClassProperties": "off"
+      },
+      "suspicious": {
+        "noEmptyBlockStatements": "off",
+        "noExplicitAny": "off",
+        "noUnnecessaryConditions": "off",
+        "useAwait": "off",
+        "useIterableCallbackReturn": "off"
+      }
+    }
+  },
+  "assist": {
+    "enabled": true,
+    "actions": {
+      "source": {
+        "organizeImports": "off",
+        "useSortedAttributes": "off",
+        "useSortedInterfaceMembers": "off",
+        "useSortedKeys": "off",
+        "useSortedPackageJson": "off",
+        "useSortedProperties": "off"
+      }
+    }
+  },
+  "overrides": [
+    {
+      "includes": ["**/*.html", "**/*.css"],
+      "formatter": { "enabled": false }
+    }
+  ]
+}
