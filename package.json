@@ -7,11 +7,14 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"pnpm run dev:server\" \"pnpm run dev:web\"",
     "dev:server": "pnpm --filter motion-server run dev",
     "dev:web": "pnpm --filter motion-web run dev",
+    "lint": "ultracite check .",
     "typecheck": "pnpm --filter motion-server run typecheck && pnpm --filter motion-web run typecheck",
     "build": "pnpm --filter motion-web run build"
   },
   "devDependencies": {
-    "concurrently": "^9.1.0"
+    "@biomejs/biome": "2.5.5",
+    "concurrently": "^9.1.0",
+    "ultracite": "7.10.2"
   },
   "engines": {
     "node": ">=20"

@@ -27,6 +27,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-09** — Adopted the shared Ultracite lint baseline for the TypeScript
+  relay and web-game surfaces. Thirty-nine applicable source and configuration
+  files pass with zero diagnostics via explicit compatibility rules; iOS,
+  built webgame bundles, public output, and runtime behavior remain unchanged.
 - **2026-07-31** — Extended the existing product-specific agent catalog with a
   full brief and changelog Markdown mirror while preserving the prototype and
   privacy boundaries; production deployment remains separate.
@@ -93,6 +97,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - **`server/`** — PartyKit relay. The v2 browser/multiplayer transport (kept
   typecheck-green); also the endpoint the live `streamToWebsite` preview connects
   to today.
+- Shared Ultracite lint baseline with a clean 39-file TypeScript check.
 - **Self-contained app** — the web build is bundled into the app
   (`ios/Resources/webgame`, refreshed by `scripts/sync-webgame.sh`); `GameConfig`
   auto-prefers it, so the app runs on a phone with **no dev server / Mac network**.
