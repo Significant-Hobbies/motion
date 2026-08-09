@@ -78,6 +78,26 @@ app** (`ios/Resources/webgame`), so no dev server or Mac network is needed to pl
 `GameConfig.forceDevServer = true`, point the app's dev-server IP at your Mac, and
 refresh the bundle after changes with `./scripts/sync-webgame.sh`.
 
+## Checks and public landing release
+
+Pushes and pull requests run the repository-owned web/server typecheck, web
+build, and static landing contract. Physical-device and signing evidence stays
+manual because hosted CI cannot exercise the camera path.
+
+```bash
+pnpm check
+```
+
+The public landing is a separate static Cloudflare Pages surface. Release it
+only from a clean, synchronized `main` after exact-main CI is green:
+
+```bash
+pnpm deploy
+```
+
+The parked PartyKit relay keeps its separate `server` deploy command and is not
+released by the landing command.
+
 ## Status & the main risk
 
 MVP POC. See [`PROJECT_STATUS.md`](./PROJECT_STATUS.md) and

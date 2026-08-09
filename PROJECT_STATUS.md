@@ -31,6 +31,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   relay and web-game surfaces. Thirty-nine applicable source and configuration
   files pass with zero diagnostics via explicit compatibility rules; iOS,
   built webgame bundles, public output, and runtime behavior remain unchanged.
+- **2026-08-09** — Added repository-owned push/PR CI for the server/web
+  typecheck, web build, and static landing contract, plus an explicit manual
+  Cloudflare Pages release command for the live public landing. Hosted CI keeps
+  iOS signing and physical-camera verification out of scope.
 - **2026-07-31** — Extended the existing product-specific agent catalog with a
   full brief and changelog Markdown mirror while preserving the prototype and
   privacy boundaries; production deployment remains separate.
