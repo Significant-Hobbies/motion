@@ -27,6 +27,9 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-09** — Pinned the landing release tool in the workspace lockfile
+  and switched the deploy script to `pnpm exec`, removing npm/pnpm configuration
+  deprecation warnings from the manual Cloudflare Pages release path.
 - **2026-08-09** — Adopted the shared Ultracite lint baseline for the TypeScript
   relay and web-game surfaces. Thirty-nine applicable source and configuration
   files pass with zero diagnostics via explicit compatibility rules; iOS,
