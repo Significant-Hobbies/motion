@@ -9,7 +9,10 @@
     "dev:web": "pnpm --filter motion-web run dev",
     "lint": "ultracite check .",
     "typecheck": "pnpm --filter motion-server run typecheck && pnpm --filter motion-web run typecheck",
-    "build": "pnpm --filter motion-web run build"
+    "build": "pnpm --filter motion-web run build",
+    "check:landing": "node scripts/check-landing.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm check:landing",
+    "deploy": "npx wrangler pages deploy landing --project-name motion --branch main"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.5",
