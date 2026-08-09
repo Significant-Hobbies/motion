@@ -92,7 +92,7 @@ The public landing is a separate static Cloudflare Pages surface. Release it
 only from a clean, synchronized `main` after exact-main CI is green:
 
 ```bash
-pnpm deploy
+pnpm run deploy
 ```
 
 The parked PartyKit relay keeps its separate `server` deploy command and is not
