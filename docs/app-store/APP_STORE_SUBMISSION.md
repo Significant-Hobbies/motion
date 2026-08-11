@@ -23,14 +23,14 @@ Preparation only. Do not create, upload, publish, or submit an App Store Connect
 Move your body. Play.
 
 **Promotional text**
-Turn your iPhone camera into a private, on-device motion controller. Move, grab, dodge, and record the play you make.
+Turn your iPhone or iPad camera into a private, on-device motion controller. Move, grab, dodge, and record the play you make.
 
 **Description**
 Your body is the controller.
 
-Motion turns movement into play using your iPhone camera and on-device pose detection. Step into frame, follow the live framing guide, and start Motion Maker—a tactile playground where your hands grab, carry, and throw objects.
+Motion turns movement into play using your device camera and on-device pose detection. Step into frame, follow the live framing guide, and start Motion Maker—a tactile playground where your hands grab, carry, and throw objects.
 
-The complete primary game runs on your iPhone with no account and no server required. Mirror your screen to a larger display when you want the room to become the play space.
+The complete primary game runs on your iPhone or iPad with no account and no server required. Mirror your screen to a larger display when you want the room to become the play space.
 
 • Camera processing stays on device
 • Motion Maker is bundled and works without a Mac
@@ -77,7 +77,7 @@ Confirm the rating produced by App Store Connect's current questionnaire; do not
 
 No login is required. Grant Camera access and stand where the on-screen framing guide can see the requested body area. The primary Motion Maker game is bundled in the app and does not need a server. Rotate to portrait for full-body controls or landscape for upper-body controls. Recording is optional and requests Photos add-only permission when used. The “Stream to website” setting is optional and is not required to review the primary experience.
 
-Physical camera, pose accuracy, rotation, mirroring, ReplayKit output, and Photos saving require a real iPhone and remain device-verification items.
+Physical camera, pose accuracy, rotation, mirroring, ReplayKit output, and Photos saving require a real iPhone or iPad and remain device-verification items.
 
 ## Screenshots
 
