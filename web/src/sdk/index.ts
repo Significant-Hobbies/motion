@@ -489,10 +489,12 @@ export class GameHost {
       // eslint-disable-next-line no-console
       console.error("[motion] frame error:", err);
     }
-    try {
-      this.drawDiag();
-    } catch {
-      /* diag must never itself break the loop */
+    if (this.debugMode || this.lastError) {
+      try {
+        this.drawDiag();
+      } catch {
+        /* diagnostics must never break the game loop */
+      }
     }
     this.rafId = requestAnimationFrame(this.frame);
   };

@@ -10,6 +10,7 @@ const landing = path.join(root, "landing");
 const required = [
   "index.html",
   "changelog.html",
+  "privacy.html",
   "404.html",
   "styles.css",
   "llms.txt",
@@ -27,6 +28,7 @@ await Promise.all(required.map((file) => stat(path.join(landing, file))));
 const [
   html,
   changelog,
+  privacy,
   css,
   llms,
   markdown,
@@ -39,6 +41,7 @@ const [
   await Promise.all([
     readFile(path.join(landing, "index.html"), "utf8"),
     readFile(path.join(landing, "changelog.html"), "utf8"),
+    readFile(path.join(landing, "privacy.html"), "utf8"),
     readFile(path.join(landing, "styles.css"), "utf8"),
     readFile(path.join(landing, "llms.txt"), "utf8"),
     readFile(path.join(landing, "index.md"), "utf8"),
@@ -67,8 +70,11 @@ assert.equal((changelog.match(/<time datetime="\d{4}-\d{2}-\d{2}">/g) ?? []).len
 assert.match(changelog, /https:\/\/github\.com\/Significant-Hobbies\/motion\/issues/);
 assert.match(changelog, /https:\/\/github\.com\/Significant-Hobbies\/motion/);
 assert.match(sitemap, /https:\/\/motion\.significanthobbies\.com\/changelog/);
+assert.match(privacy, /Camera frames are not transmitted to us or stored by us/);
+assert.match(privacy, /href="https:\/\/github\.com\/Significant-Hobbies\/motion\/issues"/);
+assert.match(sitemap, /https:\/\/motion\.significanthobbies\.com\/privacy/);
 
-for (const text of [html, changelog, llms, markdown, JSON.stringify(ai)]) {
+for (const text of [html, changelog, privacy, llms, markdown, JSON.stringify(ai)]) {
   assert.doesNotMatch(text, /href=["']\/play|debug=1|camera=1|room=|127\.0\.0\.1|localhost/i);
 }
 
