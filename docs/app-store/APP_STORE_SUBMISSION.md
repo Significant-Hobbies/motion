@@ -12,6 +12,7 @@ Preparation only. Do not create, upload, publish, or submit an App Store Connect
 - Minimum iOS: 17.0
 - Primary language: English (U.S.)
 - Primary category: Games
+- Game subcategories: Casual; Sports
 - Secondary category: Health & Fitness
 - Copyright: `2026 Sarthak Agrawal`
 - License: Apple's standard EULA
@@ -65,13 +66,23 @@ The privacy source is prepared at `landing/privacy.html`; the live route must re
 ## Age rating draft
 
 - Made for Kids: No
-- Gambling, contests, simulated gambling, loot boxes: None
-- Sexual content, profanity, horror, drugs, alcohol, tobacco: None
-- Medical or wellness topics: None
-- User-generated content, messaging, unrestricted web access: None
-- Cartoon/fantasy violence: Infrequent/Mild, because Motion Maker includes stylized sword-like play objects
+- In-app parental controls or age assurance: None
+- Unrestricted web access, broadly distributed user-generated content, social
+  media, messaging/chat, and advertising: No
+- Health or Wellness Topics and Medical or Treatment Information: None — Motion
+  is a movement game and provides no exercise or medical recommendations
+- Cartoon or Fantasy Violence: Infrequent — Motion Maker includes stylized
+  sword-like play objects
+- Guns or Other Weapons: Infrequent — the same optional stylized play objects
+- Sexuality or nudity, profanity, horror, drugs, alcohol, tobacco, realistic
+  violence, gambling, contests, simulated gambling, and loot boxes: None
 
 Confirm the rating produced by App Store Connect's current questionnaire; do not manually claim a lower rating.
+
+## Regulated medical device declaration
+
+- Regulated medical device in the EU/EEA, UK, or U.S.: No
+- Use statement or medical-device safety information: Not applicable
 
 ## Review notes
 
