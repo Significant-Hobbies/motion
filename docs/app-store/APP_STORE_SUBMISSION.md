@@ -80,7 +80,7 @@ Physical camera, pose accuracy, rotation, mirroring, ReplayKit output, and Photo
 
 ## Screenshots
 
-- iPhone 6.9-inch portrait: `artifacts/app-store/iphone-6.9/motion-maker-clean.png` (`1206 × 2622`)
+- iPhone 6.9-inch portrait: `artifacts/app-store/iphone-6.9/motion-maker-clean.jpg` (`1320 × 2868`)
 - iPad 13-inch portrait: `artifacts/app-store/ipad-13/motion-maker-clean.png` (`2064 × 2752`)
 - Both files use Apple-accepted dimensions, contain no alpha channel, and were captured from the Release simulator build with the camera-free synthetic-pose harness
 - App previews: omit for version 1.0
