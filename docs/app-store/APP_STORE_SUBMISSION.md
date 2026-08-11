@@ -18,13 +18,13 @@ Preparation only. Do not create, upload, publish, or submit an App Store Connect
 
 ## Store copy
 
-**Subtitle**  
+**Subtitle**
 Move your body. Play.
 
-**Promotional text**  
+**Promotional text**
 Turn your iPhone camera into a private, on-device motion controller. Move, grab, dodge, and record the play you make.
 
-**Description**  
+**Description**
 Your body is the controller.
 
 Motion turns movement into play using your iPhone camera and on-device pose detection. Step into frame, follow the live framing guide, and start Motion Maker—a tactile playground where your hands grab, carry, and throw objects.
@@ -41,7 +41,7 @@ The complete primary game runs on your iPhone with no account and no server requ
 
 Motion is an experimental movement game, not a fitness or medical service. Use it in a clear space and move within your own comfort and ability.
 
-**Keywords**  
+**Keywords**
 movement,body,controller,game,pose,camera,play,motion,active,airplay
 
 ## URLs
