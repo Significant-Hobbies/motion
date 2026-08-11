@@ -63,7 +63,7 @@ struct RecordingView: View {
                 .tint(.white)
             }
 
-            Text("Records this phone's screen — the game and your camera together — on-device only.")
+            Text("Records this device's screen — the game and your camera together — on-device only.")
                 .font(.caption2)
                 .foregroundStyle(.white.opacity(0.6))
                 .fixedSize(horizontal: false, vertical: true)

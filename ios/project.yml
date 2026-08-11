@@ -55,7 +55,7 @@ targets:
       properties:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        NSCameraUsageDescription: "Motion uses the front camera on-device to turn your body movements into game controls. Camera video never leaves your phone."
+        NSCameraUsageDescription: "Motion uses the front camera on-device to turn your body movements into game controls. Camera video never leaves your device."
         NSPhotoLibraryAddUsageDescription: "Motion saves your gameplay recordings (the game plus your camera) to Photos."
         NSLocalNetworkUsageDescription: "Motion connects to the game running on your computer over your local Wi-Fi."
         ITSAppUsesNonExemptEncryption: false

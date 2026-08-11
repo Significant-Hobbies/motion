@@ -28,7 +28,7 @@ struct PairingView: View {
             VStack(spacing: 6) {
                 Text("Motion")
                     .font(.largeTitle.bold())
-                Text("Turn your phone into a motion controller")
+                Text("Turn your device into a motion controller")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }

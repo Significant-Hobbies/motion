@@ -88,10 +88,10 @@ final class SetupEvaluator {
         }
         if missing.contains(.leftFoot) || missing.contains(.rightFoot) {
             // Feet cut off at the bottom → phone too low or player too close.
-            return verdict(.raisePhone, "Prop the phone higher so your feet show.")
+            return verdict(.raisePhone, "Prop your device higher so your feet show.")
         }
         if missing.contains(.head) {
-            return verdict(.raisePhone, "Tilt the phone up — your head is out of frame.")
+            return verdict(.raisePhone, "Tilt your device up — your head is out of frame.")
         }
         if !missing.isEmpty {
             return verdict(.partial, "Step back so your whole body fits.")
@@ -124,7 +124,7 @@ final class SetupEvaluator {
             return verdict(.lost, "Step into the frame so the camera can see you.")
         }
         if missing.contains(.head) {
-            return verdict(.raisePhone, "Tilt the phone so your head is in frame.")
+            return verdict(.raisePhone, "Tilt your device so your head is in frame.")
         }
         if missing.contains(.leftHand) || missing.contains(.rightHand) {
             return verdict(.partial, "Frame your head, arms, and hands.")

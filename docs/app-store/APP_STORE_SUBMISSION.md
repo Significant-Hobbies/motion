@@ -36,7 +36,7 @@ The complete primary game runs on your iPhone or iPad with no account and no ser
 • Motion Maker is bundled and works without a Mac
 • Portrait full-body and landscape upper-body modes
 • Front and wide-rear camera support
-• Clap-to-start when you are standing away from the phone
+• Clap-to-start when you are standing away from the device
 • Optional ReplayKit recording saved directly to Photos
 • Optional browser display for live normalized movement—never camera frames
 

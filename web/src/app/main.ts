@@ -91,7 +91,7 @@ function showDownloadLink(url: string, webmWarning: boolean): void {
   a.href = url;
   a.download = webmWarning ? "motion-clip.webm" : "motion-clip.mp4";
   a.textContent = webmWarning
-    ? "⬇ Download gameplay clip (WebM — MP4 needed for phone compositing)"
+    ? "⬇ Download gameplay clip (WebM — MP4 needed for device compositing)"
     : "⬇ Download gameplay clip";
   Object.assign(a.style, {
     position: "absolute",

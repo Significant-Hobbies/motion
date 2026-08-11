@@ -26,7 +26,7 @@
 		<true/>
 	</dict>
 	<key>NSCameraUsageDescription</key>
-	<string>Motion uses the front camera on-device to turn your body movements into game controls. Camera video never leaves your phone.</string>
+	<string>Motion uses the front camera on-device to turn your body movements into game controls. Camera video never leaves your device.</string>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Motion connects to the game running on your computer over your local Wi-Fi.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>

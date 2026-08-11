@@ -1,12 +1,12 @@
 # Motion — iOS (v1: serverless, single device)
 
-Turns an iPhone into a full-body motion controller **and** the game screen. The phone
+Turns an iPhone or iPad into a full-body motion controller **and** the game screen. The device
 does everything: the front camera runs Apple **Vision** body-pose detection on-device,
 the web game runs inside a full-screen `WKWebView`, pose is injected into the game
 **in-process via a JavaScript bridge** (no server, no WebSocket, no pairing), and the
 whole screen (game + a small camera inset) is recorded with **ReplayKit** as one video.
 
-You watch on a TV by **mirroring the phone** via the OS (AirPlay / Chromecast mirror from
+You watch on a TV by **mirroring the device** via the OS (AirPlay / Chromecast mirror from
 Control Center). The app implements no casting of its own.
 
 > The v2 browser/relay path (WebSocket relay, room pairing, offline PiP compositing) is
@@ -19,7 +19,7 @@ Control Center). The app implements no casting of its own.
 - [XcodeGen](https://github.com/yonaskolb/XcodeGen): `brew install xcodegen`
 - [CocoaPods](https://cocoapods.org): `brew install cocoapods` (needed for the MediaPipe
   hand-tracking dependency — see below)
-- A physical iPhone (the simulator has no usable camera; ReplayKit capture also needs a device)
+- A physical iPhone or iPad (the simulator has no usable camera; ReplayKit capture also needs a device)
 - For the dev-server loop: the Motion **web** app running on your Mac (see `../web`)
 
 ## Generate & build
@@ -82,14 +82,14 @@ only the HAND signal is MediaPipe.
 2. Find your Mac's **LAN IP** (System Settings → Wi-Fi → Details). Either edit
    `MAC_LAN_IP` in `Sources/Motion/Game/GameConfig.swift`, or set it at runtime in the
    app: on the setup screen tap the gear icon and type the IP into **Dev server IP**.
-   The phone and Mac must be on the same Wi-Fi.
+   The iOS device and Mac must be on the same Wi-Fi.
 
 3. Run on the connected device. Approve the **camera** (and, on first save, **Photos-add**)
    prompts. The WKWebView loads `http://<MAC_LAN_IP>:5173/?transport=bridge` — an
    insecure origin is fine because bridge mode does no `getUserMedia`/`MediaRecorder`.
 
 4. Play: frame your whole body → **Calibrate** → the game goes full-screen. Optionally arm
-   the red **Record** toggle. **Mirror the phone to a TV** via Control Center (AirPlay /
+   the red **Record** toggle. **Mirror the device to a TV** via Control Center (AirPlay /
    Chromecast mirror).
 
 ## "Pure app" finish (bundled build — no Mac, no network)

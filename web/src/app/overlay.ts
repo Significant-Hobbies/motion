@@ -39,7 +39,7 @@ export class Overlay implements SessionScreenRenderer {
     this.panel(`
       <div style="${KICKER}">Motion</div>
       <div style="font-size:min(3.2vw,26px);color:#8a95b5;margin-bottom:18px">
-        Open the Motion app on your phone and enter this code
+        Open the Motion app on your iPhone or iPad and enter this code
       </div>
       <div style="${CODE_STYLE}">${spaced(code)}</div>
       <div style="display:flex;align-items:center;gap:10px;justify-content:center;margin-top:26px">
@@ -48,10 +48,10 @@ export class Overlay implements SessionScreenRenderer {
       </div>
       <label style="${REC_TOGGLE}">
         <input id="rec-toggle" type="checkbox" ${recordOn ? "checked" : ""} style="width:20px;height:20px;accent-color:#35e0c8" />
-        <span>Record gameplay clip${debug ? " (browser download in debug)" : " → phone"}</span>
+        <span>Record gameplay clip${debug ? " (browser download in debug)" : " → device"}</span>
       </label>
       <div style="font-size:12px;color:#4b5573;margin-top:16px">relay: ${escapeHtml(host)}</div>
-      ${debug ? `<div style="${DEBUG_TAG}">DEBUG MODE — no phone needed. Move the mouse to begin.</div>` : ""}
+      ${debug ? `<div style="${DEBUG_TAG}">DEBUG MODE — no iOS device needed. Move the mouse to begin.</div>` : ""}
     `);
     const toggle = this.root.querySelector<HTMLInputElement>("#rec-toggle");
     toggle?.addEventListener("change", () => onToggleRecord(!!toggle.checked));
@@ -67,7 +67,7 @@ export class Overlay implements SessionScreenRenderer {
     const pct = Math.round(state.qualityHold * 100);
     this.panel(`
       <div style="${KICKER}">Get ready</div>
-      ${row(state.peer, debug ? "Debug controller active" : "Phone connected")}
+      ${row(state.peer, debug ? "Debug controller active" : "iOS device connected")}
       ${row(state.joints, "Body in frame")}
       ${row(state.quality, "Tracking stable", state.quality ? "" : `holding ${pct}%`)}
       ${row(state.calibrated, debug ? "Calibration (auto)" : "Calibration complete")}

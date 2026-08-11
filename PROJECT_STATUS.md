@@ -2,10 +2,10 @@
 
 ## Why / What
 
-Use your body as a game controller. An iPhone runs Apple Vision 2D body-pose
+Use your body as a game controller. An iPhone or iPad runs Apple Vision 2D body-pose
 detection on the front camera and drives a game with your movement. **v1 is a
-serverless, single-device POC**: the game renders full-screen on the phone and you
-screen-mirror the phone to a TV (AirPlay / Chromecast / QuickTime). No backend, no
+serverless, single-device POC**: the game renders full-screen on the device and you
+screen-mirror the device to a TV (AirPlay / Chromecast / QuickTime). No backend, no
 accounts, no pairing.
 
 The central product risk is **control feel**, not infrastructure — so v1 removes
@@ -14,7 +14,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Dependencies
 
-- **iOS 17+**, Xcode 16+, a physical iPhone (camera). Apple **Vision** + **AVFoundation**
+- **iOS 17+**, Xcode 16+, a physical iPhone or iPad (camera). Apple **Vision** + **AVFoundation**
   (on-device pose, no ML model), **WebKit** (`WKWebView` game host), **ReplayKit**
   (screen recording), **Photos** (save).
 - **XcodeGen** — generates the Xcode project from `ios/project.yml`.
@@ -27,6 +27,9 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-12** — Aligned the universal iPhone/iPad build, permission prompts,
+  setup guidance, recording states, bundled web game, and App Store copy around
+  device-neutral language; refreshed the personal-team distribution export.
 - **2026-08-11** — Prepared the iPhone/iPad beta for TestFlight transport with
   versioned App Store metadata, a privacy manifest and public privacy surface,
   clean simulator screenshot evidence, an archive-safe bundled web-game sync,
@@ -67,7 +70,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Products
 
-- **Motion v1 POC** — one iPhone, on-phone game (*Motion Maker*, the grab/toss
+- **Motion v1 POC** — one iPhone or iPad, on-device game (*Motion Maker*, the grab/toss
   playground the bridge transport runs), mirror to a TV.
 - **Public product landing** — a static introduction for people interested in
   games, live at
@@ -93,7 +96,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - **`web/` — reusable game SDK.** Game-agnostic `sdk/` (room, `BodyController`,
   calibration, readiness, diagnostics, canvas, recording) + a `Game` interface; a game
   is a drop-in (`createSession({ game })`). Two games ship: **Motion Maker**
-  (grab/toss playground; run whenever the transport is `bridge` — i.e. the phone
+  (grab/toss playground; run whenever the transport is `bridge` — i.e. the device
   hosts it — or via `?game=motion-maker` / `?room=MOTION`) and **Reach & Dodge**
   (timed round; the plain-browser socket default). Two transports: **`bridge`**
   (v1, in-process, native pushes pose via `window.__motion`) and **`socket`** (v2,
@@ -116,7 +119,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - Shared Ultracite lint baseline with a clean 39-file TypeScript check.
 - **Self-contained app** — the web build is bundled into the app
   (`ios/Resources/webgame`, refreshed by `scripts/sync-webgame.sh`); `GameConfig`
-  auto-prefers it, so the app runs on a phone with **no dev server / Mac network**.
+  auto-prefers it, so the app runs on an iOS device with **no dev server / Mac network**.
   Verified: `webgame/` ships in the built `.app` and the app launches clean.
 
 ## Work queue

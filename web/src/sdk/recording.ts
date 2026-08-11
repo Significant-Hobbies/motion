@@ -146,7 +146,7 @@ export class CanvasRecorder {
       console.warn(
         `[motion] Recording as ${mime} — iOS cannot composite WebM. ` +
           `Use a browser with MP4/H.264 MediaRecorder support for on-device ` +
-          `picture-in-picture; otherwise the phone saves two separate clips.`,
+          `picture-in-picture; otherwise the iOS device saves two separate clips.`,
       );
     }
 
@@ -236,7 +236,7 @@ export class CanvasRecorder {
     if (!this.room.peerConnected) {
       this.setPhase(
         "done",
-        `No phone connected — clip available as browser download (${mime}).`,
+        `No iOS device connected — clip available as browser download (${mime}).`,
       );
       return;
     }
