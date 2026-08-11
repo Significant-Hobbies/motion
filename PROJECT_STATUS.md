@@ -27,6 +27,11 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-11** — Prepared the iPhone/iPad beta for TestFlight transport with
+  versioned App Store metadata, a privacy manifest and public privacy surface,
+  clean simulator screenshot evidence, an archive-safe bundled web-game sync,
+  and a personal-team signed archive. App Store Connect record creation and
+  physical camera/ReplayKit verification remain separate manual gates.
 - **2026-08-09** — Pinned the landing release tool in the workspace lockfile
   and switched the deploy script to `pnpm exec`, removing npm/pnpm configuration
   deprecation warnings from the manual Cloudflare Pages release path.
@@ -74,6 +79,10 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Features (shipped)
 
+- **iOS beta preparation** — App Store identity/copy, Apple-accepted iPhone and
+  iPad simulator screenshots, privacy metadata and support links, stable
+  version/build settings, a clean default game canvas, and reproducible bundled
+  web assets are ready for the existing manual TestFlight boundary.
 - **Public landing** — responsive static product story with the existing Motion
   logo, canonical/share metadata, `llms.txt`, `index.md`, `/api/ai`, and an
   owned `/changelog` source with semantic dates and internal discovery.

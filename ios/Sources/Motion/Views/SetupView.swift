@@ -169,6 +169,16 @@ struct SetupView: View {
                 streamStatusPill
             }
 
+            Divider().overlay(.white.opacity(0.2))
+
+            HStack(spacing: 20) {
+                Link("Privacy", destination: URL(string: "https://motion.significanthobbies.com/privacy")!)
+                Link("Support", destination: URL(string: "https://motion.significanthobbies.com")!)
+            }
+            .font(.caption.bold())
+            .foregroundStyle(.white)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
             // Live hand-openness debug so the user can confirm open/close is detected.
             if let hands = model.hands {
                 Text(String(format: "Hands  L %.2f   R %.2f", hands.left, hands.right))

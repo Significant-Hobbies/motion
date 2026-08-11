@@ -13,13 +13,10 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 DEST="$ROOT/ios/Resources/webgame"
 
 echo "→ building web game…"
-npm --workspace web run build
+pnpm --filter motion-web run build
 
 echo "→ syncing dist → $DEST"
-rm -rf "$DEST"
 mkdir -p "$DEST"
-cp -R "$ROOT/web/dist/." "$DEST/"
-# Sourcemaps aren't needed in the shipped app — drop them to keep the bundle lean.
-find "$DEST" -name '*.map' -delete
+rsync -a --exclude '*.map' "$ROOT/web/dist/" "$DEST/"
 
 echo "✓ webgame bundled ($(find "$DEST" -type f | wc -l | tr -d ' ') files). Rebuild the iOS app to pick it up."
