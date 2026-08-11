@@ -9,6 +9,7 @@ Preparation only. Do not create, upload, publish, or submit an App Store Connect
 - SKU: `motion-ios-1`
 - Version: `1.0.0`
 - Build: `1`
+- Minimum iOS: 17.0
 - Primary language: English (U.S.)
 - Primary category: Games
 - Secondary category: Health & Fitness
