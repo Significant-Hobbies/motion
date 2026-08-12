@@ -320,7 +320,7 @@ function checkSwiftUnused() {
   }
   const args = [
     "scan",
-    "--project",
+    major < 3 ? "--workspace" : "--project",
     "ios/Motion.xcworkspace",
     "--schemes",
     "Motion",
