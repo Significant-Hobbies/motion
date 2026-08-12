@@ -312,7 +312,13 @@ function checkSwiftUnused() {
       "Set MOTION_INDEX_STORE to a completed Motion build index store."
     );
   }
-  const result = run("periphery", [
+  const versionResult = run("periphery", ["version"]);
+  const version = `${versionResult.stdout}\n${versionResult.stderr}`.trim();
+  const major = Number(version.match(/\d+/u)?.[0]);
+  if (!Number.isInteger(major)) {
+    throw new Error(`Could not parse Periphery version: ${version}`);
+  }
+  const args = [
     "scan",
     "--project",
     "ios/Motion.xcworkspace",
@@ -329,9 +335,13 @@ function checkSwiftUnused() {
     "--retain-objc-accessible",
     "--retain-codable-properties",
     "--retain-swift-ui-previews",
-  ]);
+  ];
+  if (major < 3) args.push("--targets", "Motion");
+  const result = run("periphery", args);
   const observed = { findings: JSON.parse(result.stdout).length };
-  log(`Swift unused-code debt: ${observed.findings} Periphery findings.`);
+  log(
+    `Swift unused-code debt: ${observed.findings} Periphery ${version} findings.`,
+  );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Swift unused code", observed, { findings: 68 });
 }
