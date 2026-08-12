@@ -80,9 +80,14 @@ refresh the bundle after changes with `./scripts/sync-webgame.sh`.
 
 ## Checks and public landing release
 
-Pushes and pull requests run the repository-owned web/server typecheck, web
-build, and static landing contract. Physical-device and signing evidence stays
-manual because hosted CI cannot exercise the camera path.
+Pushes and pull requests run the repository-owned TypeScript code-health gate
+and an unsigned iOS Simulator build. The gate covers formatting and lint,
+types, tests and full-source coverage, unused code, complexity, duplication,
+cycles, dependency risk, suppressions, and repository hygiene. Existing debt is
+ratcheted so it cannot grow and is tracked in
+[#26](https://github.com/Significant-Hobbies/motion/issues/26). Physical-device
+and signing evidence stays manual because hosted CI cannot exercise the camera
+path.
 
 ```bash
 pnpm check

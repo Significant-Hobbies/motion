@@ -486,7 +486,6 @@ export class GameHost {
     } catch (err) {
       this.lastError = err instanceof Error ? err.message : String(err);
       this.lastErrorStack = err instanceof Error ? (err.stack ?? "") : "";
-      // eslint-disable-next-line no-console
       console.error("[motion] frame error:", err);
     }
     if (this.debugMode || this.lastError) {

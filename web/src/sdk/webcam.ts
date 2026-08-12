@@ -115,7 +115,6 @@ function neutralJoints(): Joints {
 }
 
 // Loose MediaPipe types — the module is imported at runtime from a URL.
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type MpLandmark = { x: number; y: number; z: number };
 type MpResult = { landmarks?: MpLandmark[][] };
 type MpHandLandmarker = { detectForVideo(video: HTMLVideoElement, ts: number): MpResult };
@@ -224,7 +223,6 @@ export class WebcamController implements BodyController {
       const msg = err instanceof Error ? err.message : String(err);
       this.status.textContent =
         `Camera unavailable: ${msg}. Allow camera access (or pick a camera) and reload.`;
-      // eslint-disable-next-line no-console
       console.error("[motion] webcam init failed:", err);
     }
   }

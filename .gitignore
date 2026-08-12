@@ -2,6 +2,7 @@
 node_modules/
 .wrangler/
 dist/
+coverage/
 .parcel-cache/
 *.tsbuildinfo
 

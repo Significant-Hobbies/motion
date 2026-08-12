@@ -58,9 +58,12 @@ pnpm install
 pnpm run dev            # relay :1999 + web :5173
 # Reach & Dodge:  http://localhost:5173/?debug=1  → mouse=hands, arrows=lean, space=squat
 # Motion Maker:   http://localhost:5173/?game=motion-maker&debug=1  → mouse=a hand, hold left mouse/space=grab
-pnpm run typecheck
+pnpm check              # full TypeScript quality gate and debt ratchets
 ```
 
-iOS builds only on a Mac with Xcode 16+ (`cd ios && xcodegen generate`). It
-**compiles for the iOS Simulator**; camera + ReplayKit paths still need a
-**physical device** to verify (see `PROJECT_STATUS.md`).
+iOS builds only on a Mac with Xcode 16+. Generate the CocoaPods workspace with
+`cd ios && xcodegen generate && pod install --deployment`, then build the
+`Motion.xcworkspace` scheme. `pnpm quality:swift` checks the Swift formatting
+and unused-code ratchets after a build when `MOTION_INDEX_STORE` points to its
+index store. Camera + ReplayKit paths still need a **physical device** to verify
+(see `PROJECT_STATUS.md`).
