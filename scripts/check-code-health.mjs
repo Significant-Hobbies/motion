@@ -340,7 +340,7 @@ function checkSwiftUnused() {
   const result = run("periphery", args);
   const observed = { findings: JSON.parse(result.stdout).length };
   log(
-    `Swift unused-code debt: ${observed.findings} Periphery ${version} findings.`,
+    `Swift unused-code debt: ${observed.findings} Periphery ${version} findings.`
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Swift unused code", observed, { findings: 68 });
