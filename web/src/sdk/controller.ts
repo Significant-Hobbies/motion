@@ -65,7 +65,7 @@ export interface BodyController {
 }
 
 /** Required joints for the game to be playable. */
-export const REQUIRED_JOINTS: (keyof Joints)[] = [
+const REQUIRED_JOINTS: (keyof Joints)[] = [
   "head",
   "leftHand",
   "rightHand",

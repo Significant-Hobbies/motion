@@ -26,7 +26,8 @@
 //      game canvas won't be in the video, OR
 //    • Switch GameConfig.source to `.bundled` (a file:// load): a same-process/local origin
 //      is more reliably captured than a remote dev-server origin in some configurations.
-//  See the TODO at the bottom of this file. Do NOT silently assume capture works.
+//  Physical-device verification remains tracked in GitHub issue #20. Do NOT
+//  silently assume capture works.
 //  ═══════════════════════════════════════════════════════════════════════════════════
 //
 //  Bracketing: the recorder is ARMED by the on-screen Record toggle, then started by the
@@ -222,11 +223,9 @@ final class ScreenRecorder {
         return current
     }
 
-    // TODO(on-device verify): confirm ReplayKit capture includes the WKWebView game canvas
-    // AND the AVCaptureVideoPreviewLayer camera inset in the SAVED video. If the game canvas
-    // is blank, switch GameConfig.source to .bundled (file:// load) and/or fall back to a
-    // native camera-inset + HUD overlay (drop the webview from the captured frame). See the
-    // header block above for the full fallback plan.
+    // GitHub issue #20 tracks physical-device verification that ReplayKit includes both
+    // the WKWebView game canvas and AVCaptureVideoPreviewLayer camera inset in the saved
+    // video. The header block above records the fallback if either surface is blank.
 }
 
 // MARK: - Off-actor asset writer

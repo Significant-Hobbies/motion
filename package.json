@@ -7,20 +7,46 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"pnpm run dev:server\" \"pnpm run dev:web\"",
     "dev:server": "pnpm --filter motion-server run dev",
     "dev:web": "pnpm --filter motion-web run dev",
+    "format:check": "node scripts/check-code-health.mjs format",
     "lint": "ultracite check .",
     "typecheck": "pnpm --filter motion-server run typecheck && pnpm --filter motion-web run typecheck",
     "build": "pnpm --filter motion-web run build",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "knip": "knip --no-exit-code --reporter symbols",
+    "knip:strict": "knip --reporter symbols --no-config-hints",
+    "quality:coverage": "node scripts/check-code-health.mjs coverage",
+    "quality:unused": "pnpm run knip:strict",
+    "quality:complexity": "node scripts/check-code-health.mjs complexity",
+    "quality:duplication": "node scripts/check-code-health.mjs duplication",
+    "quality:cycles": "knip --cycles --no-config-hints",
+    "quality:dependencies": "node scripts/check-code-health.mjs dependencies",
+    "quality:suppressions": "node scripts/check-code-health.mjs suppressions",
+    "quality:hygiene": "node scripts/check-code-health.mjs hygiene",
+    "quality:swift-format": "node scripts/check-code-health.mjs swift-format",
+    "quality:swift-unused": "node scripts/check-code-health.mjs swift-unused",
+    "quality:swift": "pnpm run quality:swift-format && pnpm run quality:swift-unused",
     "check:landing": "node scripts/check-landing.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm build && pnpm check:landing",
+    "quality": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:landing && pnpm quality:coverage && pnpm quality:unused && pnpm quality:complexity && pnpm quality:duplication && pnpm quality:cycles && pnpm quality:dependencies && pnpm quality:suppressions && pnpm quality:hygiene",
+    "check": "pnpm quality",
     "deploy": "pnpm exec wrangler pages deploy landing --project-name motion --branch main"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.5",
+    "@biomejs/biome": "2.5.8",
+    "@vitest/coverage-v8": "4.1.10",
     "concurrently": "^9.1.0",
+    "jscpd": "5.0.14",
+    "knip": "6.32.2",
     "ultracite": "7.10.2",
-    "wrangler": "4.120.0"
+    "vitest": "4.1.10",
+    "wrangler": "4.121.0"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=20.19"
+  },
+  "pnpm": {
+    "overrides": {
+      "nanoid@>=3.0.0 <4.0.0": "3.3.17"
+    }
   }
 }

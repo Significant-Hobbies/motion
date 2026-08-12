@@ -27,6 +27,11 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-12** — Adopted the Fleet code-health standard across TypeScript and
+  Swift: added focused protocol/controller/readiness tests, honest full-source
+  coverage, unused-code and cycle checks, complexity/duplication/dependency/
+  suppression/hygiene ratchets, and an unsigned iOS build plus Swift quality CI.
+  Existing measured debt remains explicit in GitHub issue #26.
 - **2026-08-12** — Aligned the universal iPhone/iPad build, permission prompts,
   setup guidance, recording states, bundled web game, and App Store copy around
   device-neutral language; refreshed the personal-team distribution export.
@@ -116,7 +121,12 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 - **`server/`** — PartyKit relay. The v2 browser/multiplayer transport (kept
   typecheck-green); also the endpoint the live `streamToWebsite` preview connects
   to today.
-- Shared Ultracite lint baseline with a clean 39-file TypeScript check.
+- Shared Ultracite lint baseline with a clean TypeScript check.
+- **Code-health gate** — `pnpm check` enforces the cross-platform TypeScript
+  quality baseline; hosted macOS CI also builds the CocoaPods workspace and
+  prevents Swift format or unused-code debt from increasing. Full TypeScript
+  coverage is measured rather than scoped to tested modules, and all temporary
+  baseline debt is owned by GitHub issue #26.
 - **Self-contained app** — the web build is bundled into the app
   (`ios/Resources/webgame`, refreshed by `scripts/sync-webgame.sh`); `GameConfig`
   auto-prefers it, so the app runs on an iOS device with **no dev server / Mac network**.

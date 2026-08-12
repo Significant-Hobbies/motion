@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/knip@latest/schema.json",
+  "ignoreExportsUsedInFile": true,
+  "workspaces": {
+    ".": {
+      "entry": ["scripts/**/*.mjs", "vitest.config.ts", "protocol/**/*.test.ts"],
+      "project": ["scripts/**/*.mjs", "vitest.config.ts", "protocol/**/*.ts"],
+      "ignoreDependencies": ["@biomejs/biome", "@vitest/coverage-v8", "jscpd"],
+      "ignoreIssues": {
+        "protocol/protocol.ts": ["types"]
+      }
+    },
+    "server": {
+      "entry": ["src/server.ts"],
+      "project": ["src/**/*.ts"]
+    },
+    "web": {
+      "entry": ["src/app/main.ts", "src/sdk/index.ts", "src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+      "ignoreIssues": {
+        "src/sdk/controller.ts": ["types"],
+        "src/sdk/game.ts": ["types"],
+        "src/sdk/types.ts": ["types"]
+      }
+    }
+  }
+}
