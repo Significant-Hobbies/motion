@@ -12,7 +12,8 @@
       "!ios",
       "!artifacts",
       "!landing/project-strip.js",
-      "!foundry-evidence.json"
+      "!foundry-evidence.json",
+      "!landing/scripts/posthog.js"
     ]
   },
   "formatter": { "enabled": false },
