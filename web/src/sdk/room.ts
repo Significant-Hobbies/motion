@@ -40,11 +40,6 @@ export interface RoomEvents {
 
 type Listener<K extends keyof RoomEvents> = RoomEvents[K];
 
-/** Normalize a PartyKit host into a bare host:port PartySocket accepts. */
-function hostFrom(url: string): string {
-  return url.replace(/^wss?:\/\//, "").replace(/^https?:\/\//, "").replace(/\/$/, "");
-}
-
 export class Room {
   readonly code: string;
   private socket: PartySocket;
@@ -155,7 +150,7 @@ export class Room {
       | PingMessage
       | RecControlMessage
       | RecMetaMessage
-      | RecChunkMessage,
+      | RecChunkMessage
   ): void {
     if (this.socket.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(m));
@@ -229,4 +224,12 @@ export class Room {
     this.stopPingLoop();
     this.socket.close();
   }
+}
+
+/** Normalize a PartyKit host into a bare host:port PartySocket accepts. */
+function hostFrom(url: string): string {
+  return url
+    .replace(/^wss?:\/\//, "")
+    .replace(/^https?:\/\//, "")
+    .replace(/\/$/, "");
 }

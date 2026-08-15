@@ -76,7 +76,7 @@ export class CanvasRenderer implements Renderer {
 
   drawSkeleton(
     body: BodyController,
-    opts?: { color?: string; handColor?: string; alpha?: number },
+    opts?: { color?: string; handColor?: string; alpha?: number }
   ): void {
     drawSkeleton(this.surf, body, opts ?? {});
   }

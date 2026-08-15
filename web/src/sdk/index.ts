@@ -123,7 +123,10 @@ export interface SessionScreenRenderer {
   clear(): void;
   pairing(ctx: PairingCtx): void;
   mirror(): void;
-  readiness(state: import("./calibration").ReadinessState, debug: boolean): void;
+  readiness(
+    state: import("./calibration").ReadinessState,
+    debug: boolean
+  ): void;
   trackingLost(): void;
   reconnecting(): void;
   results(result: GameResult, onPlayAgain: () => void): void;
@@ -362,7 +365,10 @@ export class GameHost {
     this.recordOn = on;
   }
 
-  on<K extends keyof SessionEvents>(event: K, fn: SessionEvents[K]): () => void {
+  on<K extends keyof SessionEvents>(
+    event: K,
+    fn: SessionEvents[K]
+  ): () => void {
     this.listeners[event].add(fn);
     return () => this.listeners[event].delete(fn);
   }
@@ -415,7 +421,7 @@ export class GameHost {
     const live: BodyController =
       this.transport === "bridge" && this.bridgeController
         ? this.bridgeController
-        : this.webcamController ?? this.poseController;
+        : (this.webcamController ?? this.poseController);
     this.body = this.debugMode
       ? new KeyboardDebugController(this.canvasEl)
       : live;
@@ -629,7 +635,10 @@ export class GameHost {
     // emit gameOver/score so native can bracket its own screen recording.
     if (this.transport === "bridge") {
       if (this.lastResult) {
-        this.nativeBridge?.emit({ event: "score", value: this.lastResult.score });
+        this.nativeBridge?.emit({
+          event: "score",
+          value: this.lastResult.score,
+        });
       }
       this.nativeBridge?.emit({
         event: "gameOver",

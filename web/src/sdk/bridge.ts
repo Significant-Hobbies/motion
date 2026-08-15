@@ -123,7 +123,7 @@ export interface BridgeHostCallbacks {
 export class NativeBridge {
   constructor(
     private controller: BridgeController,
-    private callbacks: BridgeHostCallbacks,
+    private callbacks: BridgeHostCallbacks
   ) {
     this.install();
   }

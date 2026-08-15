@@ -15,6 +15,7 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
+import { distPointToSegment } from "../canvas-utils";
 
 // ── Tuning ──────────────────────────────────────────────────────────────────────
 
@@ -30,7 +31,14 @@ const GRAVITY = 0.9;
 /** Trail length (recent hand points) drawn as the blade. */
 const TRAIL_LEN = 10;
 
-const FRUIT_COLORS = ["#ff5b6a", "#ffb020", "#35e0c8", "#5b8cff", "#b25cff", "#ff8f3f"];
+const FRUIT_COLORS = [
+  "#ff5b6a",
+  "#ffb020",
+  "#35e0c8",
+  "#5b8cff",
+  "#b25cff",
+  "#ff8f3f",
+];
 
 type Which = "left" | "right";
 
@@ -123,7 +131,10 @@ export class Slice implements Game {
   private halves: Half[] = [];
   private splats: Splat[] = [];
   private popups: Popup[] = [];
-  private hands: Record<Which, HandTrack> = { left: newHand(-0.5), right: newHand(0.5) };
+  private hands: Record<Which, HandTrack> = {
+    left: newHand(-0.5),
+    right: newHand(0.5),
+  };
 
   private score = 0;
   private lives = START_LIVES;
@@ -273,7 +284,9 @@ export class Slice implements Game {
       vx,
       vy,
       r: bomb ? 0.055 : 0.05 + Math.random() * 0.02,
-      color: bomb ? "#20242e" : (FRUIT_COLORS[this.nextId % FRUIT_COLORS.length] ?? "#ff5b6a"),
+      color: bomb
+        ? "#20242e"
+        : (FRUIT_COLORS[this.nextId % FRUIT_COLORS.length] ?? "#ff5b6a"),
       bomb,
       counted: false,
     });
@@ -332,7 +345,10 @@ export class Slice implements Game {
 
       for (const f of this.fruits) {
         if (f.counted) continue;
-        if (distPointToSegment(f.x, f.y, a.x, a.y, b.x, b.y) < f.r + SLICE_REACH) {
+        if (
+          distPointToSegment(f.x, f.y, a.x, a.y, b.x, b.y) <
+          f.r + SLICE_REACH
+        ) {
           this.onSliced(f, b.x - a.x, b.y - a.y);
         }
       }
@@ -354,7 +370,8 @@ export class Slice implements Game {
     this.sliced++;
     // Combo: slices chained within the window multiply the score.
     const now = this.elapsed;
-    this.comboCount = now - this.lastSliceAt <= COMBO_WINDOW_S ? this.comboCount + 1 : 1;
+    this.comboCount =
+      now - this.lastSliceAt <= COMBO_WINDOW_S ? this.comboCount + 1 : 1;
     this.lastSliceAt = now;
     this.bestCombo = Math.max(this.bestCombo, this.comboCount);
 
@@ -494,7 +511,13 @@ export class Slice implements Game {
       ctx.fillStyle = h.color;
       ctx.beginPath();
       // A half disc (flat face along the slice).
-      ctx.arc(0, 0, rad, h.side > 0 ? 0 : Math.PI, h.side > 0 ? Math.PI : Math.PI * 2);
+      ctx.arc(
+        0,
+        0,
+        rad,
+        h.side > 0 ? 0 : Math.PI,
+        h.side > 0 ? Math.PI : Math.PI * 2
+      );
       ctx.closePath();
       ctx.fill();
       // Pale inner flesh along the cut.
@@ -626,13 +649,18 @@ export class Slice implements Game {
     ctx.fillStyle = "#f4f7ff";
     ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
     ctx.textAlign = "left";
-    ctx.fillText(String(this.score).padStart(4, "0"), p.x + r.sx(0.03), p.y + r.sy(0.03));
+    ctx.fillText(
+      String(this.score).padStart(4, "0"),
+      p.x + r.sx(0.03),
+      p.y + r.sy(0.03)
+    );
 
     // Lives as hearts, top-right.
     ctx.textAlign = "right";
     ctx.font = `${Math.round(r.sx(0.04))}px system-ui`;
     let hearts = "";
-    for (let i = 0; i < START_LIVES; i++) hearts += i < this.lives ? "♥ " : "♡ ";
+    for (let i = 0; i < START_LIVES; i++)
+      hearts += i < this.lives ? "♥ " : "♡ ";
     ctx.fillStyle = "#ff6b7f";
     ctx.fillText(hearts.trim(), p.x + p.w - r.sx(0.03), p.y + r.sy(0.035));
 
@@ -641,7 +669,11 @@ export class Slice implements Game {
       ctx.textAlign = "left";
       ctx.fillStyle = "#ffd84d";
       ctx.font = `bold ${Math.round(r.sx(0.03))}px system-ui`;
-      ctx.fillText(`${this.comboCount}× combo`, p.x + r.sx(0.03), p.y + r.sy(0.1));
+      ctx.fillText(
+        `${this.comboCount}× combo`,
+        p.x + r.sx(0.03),
+        p.y + r.sy(0.1)
+      );
     }
     ctx.restore();
   }
@@ -655,24 +687,6 @@ export class Slice implements Game {
     ctx.fillRect(p.x, p.y, p.w, p.h);
     ctx.restore();
   }
-}
-
-/** Shortest distance from point (px,py) to the segment (ax,ay)–(bx,by). */
-function distPointToSegment(
-  px: number,
-  py: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-): number {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
 }
 
 /** "#rrggbb" → "r,g,b" for rgba() splatter fills. */

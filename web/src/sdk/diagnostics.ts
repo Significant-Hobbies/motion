@@ -19,7 +19,7 @@ export class Diagnostics {
   constructor(
     parent: HTMLElement,
     private room: Room,
-    private live: boolean,
+    private live: boolean
   ) {
     this.el = document.createElement("div");
     Object.assign(this.el.style, {

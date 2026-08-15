@@ -146,7 +146,7 @@ export class CanvasRecorder {
       console.warn(
         `[motion] Recording as ${mime} — iOS cannot composite WebM. ` +
           `Use a browser with MP4/H.264 MediaRecorder support for on-device ` +
-          `picture-in-picture; otherwise the iOS device saves two separate clips.`,
+          `picture-in-picture; otherwise the iOS device saves two separate clips.`
       );
     }
 
@@ -236,7 +236,7 @@ export class CanvasRecorder {
     if (!this.room.peerConnected) {
       this.setPhase(
         "done",
-        `No iOS device connected — clip available as browser download (${mime}).`,
+        `No iOS device connected — clip available as browser download (${mime}).`
       );
       return;
     }
@@ -314,7 +314,7 @@ export class CanvasRecorder {
   private async transfer(
     blob: Blob,
     mime: string,
-    durationMs: number,
+    durationMs: number
   ): Promise<void> {
     this.setPhase("transferring");
 
@@ -381,7 +381,11 @@ function sleep(ms: number): Promise<void> {
 /** Wait for the socket send buffer to fall below the high-water mark. */
 async function drainBuffer(room: Room): Promise<void> {
   let guard = 0;
-  while (room.isOpen && room.bufferedAmount > BUFFER_HIGH_WATER && guard < 200) {
+  while (
+    room.isOpen &&
+    room.bufferedAmount > BUFFER_HIGH_WATER &&
+    guard < 200
+  ) {
     await sleep(16);
     guard++;
   }

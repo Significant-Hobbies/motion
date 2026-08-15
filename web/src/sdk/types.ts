@@ -38,7 +38,7 @@ export interface Renderer {
   /** Draw the player's body skeleton (the shared avatar). */
   drawSkeleton(
     body: BodyController,
-    opts?: { color?: string; handColor?: string; alpha?: number },
+    opts?: { color?: string; handColor?: string; alpha?: number }
   ): void;
 }
 
