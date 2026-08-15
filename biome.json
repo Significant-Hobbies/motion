@@ -11,6 +11,7 @@
       "!**/pnpm-lock.yaml",
       "!ios",
       "!artifacts",
+      "!landing/project-strip.js",
       "!foundry-evidence.json"
     ]
   },
