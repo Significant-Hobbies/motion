@@ -20,6 +20,7 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
+import { roundRect } from "../canvas-utils";
 
 const SESSION_MS = 75_000; // ~75s
 const TARGET_RADIUS = 0.075; // normalized (x-relative)
@@ -199,7 +200,7 @@ export class ReachDodge implements Game {
       }
     }
     this.targets = this.targets.filter(
-      (t) => (!t.hit && t.ttl > 0) || (t.hit && t.hitAnim < 1),
+      (t) => (!t.hit && t.ttl > 0) || (t.hit && t.hitAnim < 1)
     );
   }
 
@@ -335,7 +336,7 @@ export class ReachDodge implements Game {
     ctx.fillText(
       String(this.score).padStart(5, "0"),
       p.x + r.sx(0.03),
-      p.y + r.sy(0.03),
+      p.y + r.sy(0.03)
     );
 
     // Combo
@@ -366,21 +367,4 @@ function lerp(a: number, b: number, t: number): number {
 }
 function dist(ax: number, ay: number, bx: number, by: number): number {
   return Math.hypot(ax - bx, ay - by);
-}
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  radius: number,
-): void {
-  const rr = Math.min(radius, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
 }

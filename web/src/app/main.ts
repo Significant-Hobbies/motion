@@ -48,7 +48,8 @@ function pickGame(): { game: Game; live: boolean } {
       return { game: new Slice(), live: true };
     default:
       // Featured everywhere the phone hosts it or the MOTION mirror is on.
-      if (MOTION_MAKER || TRANSPORT === "bridge") return { game: new Slice(), live: true };
+      if (MOTION_MAKER || TRANSPORT === "bridge")
+        return { game: new Slice(), live: true };
       return { game: new ReachDodge(), live: false };
   }
 }

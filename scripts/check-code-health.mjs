@@ -101,7 +101,7 @@ function checkFormat() {
   const observed = { files: report.summary.errors };
   log(`TypeScript format debt: ${observed.files} files.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
-  failRegressions("TypeScript format", observed, { files: 19 });
+  failRegressions("TypeScript format", observed, { files: 0 });
 }
 
 function checkCoverage() {
@@ -168,9 +168,9 @@ function checkComplexity() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Complexity", observed, {
-    violations: 6,
+    violations: 3,
     maxCcn: 22,
-    maxLength: 189,
+    maxLength: 180,
     maxParams: 7,
   });
 }
@@ -208,9 +208,9 @@ function checkDuplication() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Duplication", observed, {
-    clones: 7,
-    duplicatedLines: 102,
-    percentage: 0.8814379536812997,
+    clones: 5,
+    duplicatedLines: 65,
+    percentage: 0.5543237250554324,
   });
 }
 

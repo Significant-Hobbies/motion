@@ -16,6 +16,7 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
+import { distPointToSegment, roundRect } from "../canvas-utils";
 
 // ── Interaction tuning ────────────────────────────────────────────────────────
 
@@ -106,7 +107,15 @@ interface HandTrack {
 }
 
 function newHand(): HandTrack {
-  return { x: 0.5, y: 0.5, vx: 0, vy: 0, prevOpen: 1, holding: null, armed: false };
+  return {
+    x: 0.5,
+    y: 0.5,
+    vx: 0,
+    vy: 0,
+    prevOpen: 1,
+    holding: null,
+    armed: false,
+  };
 }
 
 export class MotionMaker implements Game {
@@ -426,7 +435,7 @@ export class MotionMaker implements Game {
           h.x,
           h.y,
           sword.tipX,
-          sword.tipY,
+          sword.tipY
         );
         if (d < SLICE_RADIUS) {
           ball.scoreAnim = 0.001; // start pop
@@ -457,7 +466,9 @@ export class MotionMaker implements Game {
     ctx.save();
     const glow = this.binFlash > 0 ? this.binFlash / 0.5 : 0;
     ctx.strokeStyle =
-      glow > 0 ? `rgba(53,224,200,${0.6 + glow * 0.4})` : "rgba(53,224,200,0.45)";
+      glow > 0
+        ? `rgba(53,224,200,${0.6 + glow * 0.4})`
+        : "rgba(53,224,200,0.45)";
     ctx.lineWidth = Math.max(3, r.sx(0.008));
     ctx.setLineDash([r.sx(0.02), r.sx(0.014)]);
     roundRect(ctx, cx - w / 2, cy - h / 2, w, h, r.sx(0.02));
@@ -499,7 +510,13 @@ export class MotionMaker implements Game {
       ctx.fill();
       ctx.fillStyle = "rgba(255,255,255,0.35)";
       ctx.beginPath();
-      ctx.arc(cx - radius * 0.3, cy - radius * 0.3, radius * 0.35, 0, Math.PI * 2);
+      ctx.arc(
+        cx - radius * 0.3,
+        cy - radius * 0.3,
+        radius * 0.35,
+        0,
+        Math.PI * 2
+      );
       ctx.fill();
       ctx.restore();
     }
@@ -546,7 +563,7 @@ export class MotionMaker implements Game {
         gy - uy * handleLen,
         Math.max(4, r.sx(0.012)),
         0,
-        Math.PI * 2,
+        Math.PI * 2
       );
       ctx.fill();
 
@@ -623,9 +640,18 @@ export class MotionMaker implements Game {
     ctx.stroke();
 
     // Arms: neck → elbow (when tracked, for a real bend) → hand. Straight fallback.
-    const arms: { elbow: [number, number] | undefined; hand: [number, number] }[] = [
-      { elbow: j.leftElbow ? this.pt(r, j.leftElbow) : undefined, hand: [lhX, lhY] },
-      { elbow: j.rightElbow ? this.pt(r, j.rightElbow) : undefined, hand: [rhX, rhY] },
+    const arms: {
+      elbow: [number, number] | undefined;
+      hand: [number, number];
+    }[] = [
+      {
+        elbow: j.leftElbow ? this.pt(r, j.leftElbow) : undefined,
+        hand: [lhX, lhY],
+      },
+      {
+        elbow: j.rightElbow ? this.pt(r, j.rightElbow) : undefined,
+        hand: [rhX, rhY],
+      },
     ];
     for (const { elbow, hand } of arms) {
       ctx.beginPath();
@@ -644,15 +670,20 @@ export class MotionMaker implements Game {
     ctx.restore();
 
     // Hands — draw open vs closed.
-    this.drawHand(r, lhX, lhY, body.leftHandOpen, this.hands.left.holding !== null);
+    this.drawHand(
+      r,
+      lhX,
+      lhY,
+      body.leftHandOpen,
+      this.hands.left.holding !== null
+    );
     this.drawHand(
       r,
       rhX,
       rhY,
       body.rightHandOpen,
-      this.hands.right.holding !== null,
+      this.hands.right.holding !== null
     );
-
   }
 
   /**
@@ -674,7 +705,7 @@ export class MotionMaker implements Game {
     x: number,
     y: number,
     open: number,
-    holding: boolean,
+    holding: boolean
   ): void {
     const { ctx } = r;
     const base = Math.max(10, r.sx(0.03));
@@ -718,51 +749,19 @@ export class MotionMaker implements Game {
     ctx.fillStyle = "#f4f7ff";
     ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
     ctx.textAlign = "left";
-    ctx.fillText(String(this.score).padStart(4, "0"), p.x + r.sx(0.03), p.y + r.sy(0.03));
+    ctx.fillText(
+      String(this.score).padStart(4, "0"),
+      p.x + r.sx(0.03),
+      p.y + r.sy(0.03)
+    );
 
     ctx.fillStyle = "#8a95b5";
     ctx.font = `${Math.round(r.sx(0.024))}px system-ui`;
     ctx.fillText(
       "Grab a ball → drop it in the bin · grab the sword → swing to slice",
       p.x + r.sx(0.03),
-      p.y + r.sy(0.1),
+      p.y + r.sy(0.1)
     );
     ctx.restore();
   }
-}
-
-/** Shortest distance from point (px,py) to the segment (ax,ay)–(bx,by). */
-function distPointToSegment(
-  px: number,
-  py: number,
-  ax: number,
-  ay: number,
-  bx: number,
-  by: number,
-): number {
-  const dx = bx - ax;
-  const dy = by - ay;
-  const lenSq = dx * dx + dy * dy;
-  if (lenSq === 0) return Math.hypot(px - ax, py - ay);
-  let t = ((px - ax) * dx + (py - ay) * dy) / lenSq;
-  t = t < 0 ? 0 : t > 1 ? 1 : t;
-  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  radius: number,
-): void {
-  const rr = Math.min(radius, w / 2, h / 2);
-  ctx.beginPath();
-  ctx.moveTo(x + rr, y);
-  ctx.arcTo(x + w, y, x + w, y + h, rr);
-  ctx.arcTo(x + w, y + h, x, y + h, rr);
-  ctx.arcTo(x, y + h, x, y, rr);
-  ctx.arcTo(x, y, x + w, y, rr);
-  ctx.closePath();
 }

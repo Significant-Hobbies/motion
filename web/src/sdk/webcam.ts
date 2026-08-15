@@ -80,7 +80,7 @@ class OneEuro {
   constructor(
     private minCutoff = 1.2,
     private beta = 1.0,
-    private dCutoff = 1.0,
+    private dCutoff = 1.0
   ) {}
   private alpha(dt: number, cutoff: number): number {
     const tau = 1 / (2 * Math.PI * cutoff);
@@ -117,7 +117,9 @@ function neutralJoints(): Joints {
 // Loose MediaPipe types — the module is imported at runtime from a URL.
 type MpLandmark = { x: number; y: number; z: number };
 type MpResult = { landmarks?: MpLandmark[][] };
-type MpHandLandmarker = { detectForVideo(video: HTMLVideoElement, ts: number): MpResult };
+type MpHandLandmarker = {
+  detectForVideo(video: HTMLVideoElement, ts: number): MpResult;
+};
 
 export class WebcamController implements BodyController {
   joints: Joints = neutralJoints();
@@ -152,7 +154,9 @@ export class WebcamController implements BodyController {
   };
 
   constructor() {
-    this.status = this.makeStatus("Starting camera… allow access when prompted.");
+    this.status = this.makeStatus(
+      "Starting camera… allow access when prompted."
+    );
     void this.init();
   }
 
@@ -221,8 +225,7 @@ export class WebcamController implements BodyController {
     } catch (err) {
       this.failed = true;
       const msg = err instanceof Error ? err.message : String(err);
-      this.status.textContent =
-        `Camera unavailable: ${msg}. Allow camera access (or pick a camera) and reload.`;
+      this.status.textContent = `Camera unavailable: ${msg}. Allow camera access (or pick a camera) and reload.`;
       console.error("[motion] webcam init failed:", err);
     }
   }
@@ -237,7 +240,10 @@ export class WebcamController implements BodyController {
         this.lastDetectAt = nowMs;
         this.lastVideoTime = this.video.currentTime;
         try {
-          this.applyResult(this.landmarker.detectForVideo(this.video, nowMs), nowMs);
+          this.applyResult(
+            this.landmarker.detectForVideo(this.video, nowMs),
+            nowMs
+          );
         } catch {
           /* a dropped detection frame is harmless — keep last-known */
         }
@@ -324,7 +330,7 @@ export class WebcamController implements BodyController {
   private applyHand(
     which: "left" | "right",
     d: { x: number; y: number; open: number; indexTip: MpLandmark | undefined },
-    nowMs: number,
+    nowMs: number
   ): void {
     const key = which === "left" ? "leftHand" : "rightHand";
     const f = this.filters[which];
@@ -333,17 +339,26 @@ export class WebcamController implements BodyController {
     // to the full screen so relaxed movement covers everything.
     const fx = f.x.filter(clamp01(d.x), t);
     const fy = f.y.filter(clamp01(d.y), t);
-    this.joints[key] = [remap(fx, CENTER_X, GAIN_X), remap(fy, CENTER_Y, GAIN_Y)];
+    this.joints[key] = [
+      remap(fx, CENTER_X, GAIN_X),
+      remap(fy, CENTER_Y, GAIN_Y),
+    ];
 
     if (which === "left") {
       this.leftHandOpen += (d.open - this.leftHandOpen) * OPEN_SMOOTH;
       this.leftFingertip = d.indexTip
-        ? [remap(1 - d.indexTip.x, CENTER_X, GAIN_X), remap(d.indexTip.y, CENTER_Y, GAIN_Y)]
+        ? [
+            remap(1 - d.indexTip.x, CENTER_X, GAIN_X),
+            remap(d.indexTip.y, CENTER_Y, GAIN_Y),
+          ]
         : undefined;
     } else {
       this.rightHandOpen += (d.open - this.rightHandOpen) * OPEN_SMOOTH;
       this.rightFingertip = d.indexTip
-        ? [remap(1 - d.indexTip.x, CENTER_X, GAIN_X), remap(d.indexTip.y, CENTER_Y, GAIN_Y)]
+        ? [
+            remap(1 - d.indexTip.x, CENTER_X, GAIN_X),
+            remap(d.indexTip.y, CENTER_Y, GAIN_Y),
+          ]
         : undefined;
     }
   }

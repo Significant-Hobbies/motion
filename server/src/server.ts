@@ -103,7 +103,7 @@ export default class MotionServer implements Party.Server {
     msg: AnyMessage,
     raw: string,
     conn: Party.Connection<ConnState>,
-    role: Role,
+    role: Role
   ) {
     switch (msg.type) {
       case "join":
@@ -112,7 +112,11 @@ export default class MotionServer implements Party.Server {
 
       case "ping":
         // Answer directly with a pong echoing `t`. Never relayed to the peer.
-        this.sendTo(conn, { v: PROTOCOL_VERSION, type: "pong", t: msg.t } as PongMessage);
+        this.sendTo(conn, {
+          v: PROTOCOL_VERSION,
+          type: "pong",
+          t: msg.t,
+        } as PongMessage);
         return;
 
       case "pong":
@@ -121,11 +125,7 @@ export default class MotionServer implements Party.Server {
 
       case "pose":
         // Controller → display only. Validate, rate-limit, then relay.
-        if (role !== "controller") return;
-        if (!isPosePacket(msg)) return; // drop junk silently.
-        if (!this.allowPose(conn.id)) return; // over budget → silent drop.
-        this.relayTo("display", raw);
-        this.debugPose(raw); // throttled dev log so we can watch the stream server-side.
+        this.routePose(msg, raw, conn, role);
         return;
 
       case "status":
@@ -162,6 +162,20 @@ export default class MotionServer implements Party.Server {
     }
   }
 
+  /** Validate, rate-limit, and relay a pose packet from the controller. */
+  private routePose(
+    msg: AnyMessage,
+    raw: string,
+    conn: Party.Connection<ConnState>,
+    role: Role
+  ) {
+    if (role !== "controller") return;
+    if (!isPosePacket(msg)) return; // drop junk silently.
+    if (!this.allowPose(conn.id)) return; // over budget → silent drop.
+    this.relayTo("display", raw);
+    this.debugPose(raw); // throttled dev log so we can watch the stream server-side.
+  }
+
   // ── Join handshake + role enforcement ────────────────────────────────────────
 
   private handleJoin(msg: JoinMessage, conn: Party.Connection<ConnState>) {
@@ -169,7 +183,7 @@ export default class MotionServer implements Party.Server {
       this.sendError(
         conn,
         "version_mismatch",
-        `Server speaks protocol v${PROTOCOL_VERSION}, client sent v${String(msg.v)}.`,
+        `Server speaks protocol v${PROTOCOL_VERSION}, client sent v${String(msg.v)}.`
       );
       conn.close();
       return;
@@ -177,7 +191,11 @@ export default class MotionServer implements Party.Server {
 
     const role = msg.role;
     if (role !== "display" && role !== "controller") {
-      this.sendError(conn, "bad_role", "Role must be 'display' or 'controller'.");
+      this.sendError(
+        conn,
+        "bad_role",
+        "Role must be 'display' or 'controller'."
+      );
       conn.close();
       return;
     }
@@ -190,11 +208,19 @@ export default class MotionServer implements Party.Server {
     //    don't endlessly evict each other.
     if (this.roleTaken(role, conn.id)) {
       if (role === "controller") {
-        console.log(`[${this.room.id}] controller reconnect — evicting stale controller`);
+        console.log(
+          `[${this.room.id}] controller reconnect — evicting stale controller`
+        );
         this.evictRole("controller", conn.id);
       } else {
-        console.log(`[${this.room.id}] REJECTED ${role} (room_full — a ${role} is already here)`);
-        this.sendError(conn, "room_full", `A ${role} is already connected to this room.`);
+        console.log(
+          `[${this.room.id}] REJECTED ${role} (room_full — a ${role} is already here)`
+        );
+        this.sendError(
+          conn,
+          "room_full",
+          `A ${role} is already connected to this room.`
+        );
         conn.close();
         return;
       }
@@ -202,7 +228,9 @@ export default class MotionServer implements Party.Server {
 
     // Tag the connection with its role — this is what marks it "joined".
     conn.setState({ role });
-    console.log(`[${this.room.id}] JOINED ${role}  (conns now: ${[...this.room.getConnections()].length})`);
+    console.log(
+      `[${this.room.id}] JOINED ${role}  (conns now: ${[...this.room.getConnections()].length})`
+    );
 
     // Broadcast authoritative presence to BOTH roles. Every side gets the TRUE current
     // state (not an incremental event that can be missed during reconnect churn), so the
@@ -226,8 +254,10 @@ export default class MotionServer implements Party.Server {
     for (const c of this.room.getConnections<ConnState>()) {
       if (c.id === excludeId) continue;
       const r = c.state?.role;
-      if (r === "display") this.safeSend(c, JSON.stringify(peerMsg("controller", hasController)));
-      else if (r === "controller") this.safeSend(c, JSON.stringify(peerMsg("display", hasDisplay)));
+      if (r === "display")
+        this.safeSend(c, JSON.stringify(peerMsg("controller", hasController)));
+      else if (r === "controller")
+        this.safeSend(c, JSON.stringify(peerMsg("display", hasDisplay)));
     }
   }
 
@@ -241,9 +271,10 @@ export default class MotionServer implements Party.Server {
       // Cheap field-presence check tells us if the phone is on the NEW build:
       // new build streams fingertips + elbows; old build has neither.
       const fingertips = raw.includes('"fingertips"');
-      const elbows = raw.includes('"leftElbow"') || raw.includes('"rightElbow"');
+      const elbows =
+        raw.includes('"leftElbow"') || raw.includes('"rightElbow"');
       console.log(
-        `[${this.room.id}] pose #${this.poseCount} — display:${hasDisplay} fingertips:${fingertips} elbows:${elbows}`,
+        `[${this.room.id}] pose #${this.poseCount} — display:${hasDisplay} fingertips:${fingertips} elbows:${elbows}`
       );
     }
   }
@@ -261,7 +292,8 @@ export default class MotionServer implements Party.Server {
   private evictRole(role: Role, exceptId: string) {
     for (const c of this.room.getConnections<ConnState>()) {
       if (c.id === exceptId) continue;
-      if (c.state?.role === role) c.close(1000, "replaced by a newer connection");
+      if (c.state?.role === role)
+        c.close(1000, "replaced by a newer connection");
     }
   }
 
@@ -295,7 +327,7 @@ export default class MotionServer implements Party.Server {
   private sendError(
     conn: Party.Connection<ConnState>,
     code: ErrorMessage["code"],
-    message: string,
+    message: string
   ) {
     this.sendTo(conn, { v: PROTOCOL_VERSION, type: "error", code, message });
   }

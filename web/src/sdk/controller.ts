@@ -137,7 +137,7 @@ export abstract class PoseControllerBase implements BodyController {
   // Per-optional-arm-joint absence counter. 0 = present this packet; once it
   // exceeds ARM_ABSENCE_GRACE the joint is cleared to undefined on `joints`.
   private armAbsent: Record<string, number> = Object.fromEntries(
-    ARM_JOINT_NAMES.map((n) => [n, ARM_ABSENCE_GRACE + 1]),
+    ARM_JOINT_NAMES.map((n) => [n, ARM_ABSENCE_GRACE + 1])
   );
 
   // Per-fingertip absence counter, same brief-dropout tolerance as the arm joints:
@@ -205,12 +205,12 @@ export abstract class PoseControllerBase implements BodyController {
     this.leftFingertip = this.smoothFingertip(
       "left",
       this.leftFingertip,
-      p.fingertips?.left,
+      p.fingertips?.left
     );
     this.rightFingertip = this.smoothFingertip(
       "right",
       this.rightFingertip,
-      p.fingertips?.right,
+      p.fingertips?.right
     );
 
     this.captureCalibration();
@@ -225,7 +225,7 @@ export abstract class PoseControllerBase implements BodyController {
   private smoothFingertip(
     which: "left" | "right",
     prev: [number, number] | undefined,
-    incoming: [number, number] | undefined,
+    incoming: [number, number] | undefined
   ): [number, number] | undefined {
     if (incoming) {
       this.fingertipAbsent[which] = 0;
@@ -280,7 +280,7 @@ export abstract class PoseControllerBase implements BodyController {
       // Decay quality as it goes staler.
       this.trackingQuality = Math.max(
         0,
-        this.rawQuality * (1 - (this.ageMs - STALE_MS) / 1000),
+        this.rawQuality * (1 - (this.ageMs - STALE_MS) / 1000)
       );
     } else if (this.rawQuality < 0.4 || !required) {
       this.health = "low_quality";

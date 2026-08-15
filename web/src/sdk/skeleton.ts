@@ -26,7 +26,7 @@ const ARM_SIDES: Side[] = [
 export function drawSkeleton(
   surf: CanvasSurface,
   body: BodyController,
-  opts: { color?: string; handColor?: string; alpha?: number } = {},
+  opts: { color?: string; handColor?: string; alpha?: number } = {}
 ): void {
   const { ctx } = surf;
   const j = body.joints;
@@ -55,25 +55,7 @@ export function drawSkeleton(
   // Arms. When the real shoulder+elbow joints are present, draw the bent chain
   // shoulder→elbow→hand; otherwise fall back to a straight torso→hand line.
   for (const { shoulder, elbow, hand } of ARM_SIDES) {
-    const sh = j[shoulder];
-    const el = j[elbow];
-    const hd = j[hand] as [number, number];
-    ctx.beginPath();
-    if (sh && el) {
-      const [sx, sy] = surf.toPx(sh[0], sh[1]);
-      const [ex, ey] = surf.toPx(el[0], el[1]);
-      const [hx, hy] = surf.toPx(hd[0], hd[1]);
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(ex, ey);
-      ctx.lineTo(hx, hy);
-    } else {
-      const from = sh ?? j.torso;
-      const [fx, fy] = surf.toPx(from[0], from[1]);
-      const [hx, hy] = surf.toPx(hd[0], hd[1]);
-      ctx.moveTo(fx, fy);
-      ctx.lineTo(hx, hy);
-    }
-    ctx.stroke();
+    drawArm(ctx, surf, j, shoulder, elbow, hand);
   }
 
   // Head
@@ -97,4 +79,34 @@ export function drawSkeleton(
   }
 
   ctx.restore();
+}
+
+/** Draw one arm as a shoulder→elbow→hand chain, or a straight torso→hand fallback. */
+function drawArm(
+  ctx: CanvasRenderingContext2D,
+  surf: CanvasSurface,
+  j: BodyController["joints"],
+  shoulder: keyof Joints,
+  elbow: keyof Joints,
+  hand: keyof Joints
+): void {
+  const sh = j[shoulder];
+  const el = j[elbow];
+  const hd = j[hand] as [number, number];
+  ctx.beginPath();
+  if (sh && el) {
+    const [sx, sy] = surf.toPx(sh[0], sh[1]);
+    const [ex, ey] = surf.toPx(el[0], el[1]);
+    const [hx, hy] = surf.toPx(hd[0], hd[1]);
+    ctx.moveTo(sx, sy);
+    ctx.lineTo(ex, ey);
+    ctx.lineTo(hx, hy);
+  } else {
+    const from = sh ?? j.torso;
+    const [fx, fy] = surf.toPx(from[0], from[1]);
+    const [hx, hy] = surf.toPx(hd[0], hd[1]);
+    ctx.moveTo(fx, fy);
+    ctx.lineTo(hx, hy);
+  }
+  ctx.stroke();
 }

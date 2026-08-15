@@ -30,7 +30,7 @@ export class Readiness {
 
   constructor(
     private room: Room,
-    private debug: boolean,
+    private debug: boolean
   ) {
     if (!debug) {
       room.on("calib", (c) => {
@@ -44,7 +44,8 @@ export class Readiness {
     const peer = this.debug ? true : this.room.peerConnected;
     const joints = body.hasRequiredJoints;
     const qualityNow =
-      body.health === "ok" && body.trackingQuality >= (this.debug ? 0.1 : QUALITY_MIN);
+      body.health === "ok" &&
+      body.trackingQuality >= (this.debug ? 0.1 : QUALITY_MIN);
 
     if (qualityNow && joints && peer) {
       if (this.goodSince < 0) this.goodSince = nowMs;

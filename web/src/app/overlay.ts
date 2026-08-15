@@ -29,7 +29,11 @@ export class Overlay implements SessionScreenRenderer {
   pairing(ctx: PairingCtx): void {
     const { code, conn, host, debug, recordOn, onToggleRecord } = ctx;
     const dot =
-      conn === "open" ? "#35e0c8" : conn === "connecting" ? "#ffcc33" : "#ff4d6d";
+      conn === "open"
+        ? "#35e0c8"
+        : conn === "connecting"
+          ? "#ffcc33"
+          : "#ff4d6d";
     const connLabel =
       conn === "open"
         ? "connected to relay"
@@ -106,7 +110,7 @@ export class Overlay implements SessionScreenRenderer {
     const stats = r.stats
       .map(
         (s) =>
-          `<div><b style="color:#f4f7ff">${escapeHtml(s.value)}</b><br><span style="color:#8a95b5">${escapeHtml(s.label)}</span></div>`,
+          `<div><b style="color:#f4f7ff">${escapeHtml(s.value)}</b><br><span style="color:#8a95b5">${escapeHtml(s.label)}</span></div>`
       )
       .join("");
     this.panel(`
@@ -128,7 +132,7 @@ function spaced(code: string): string {
 }
 function escapeHtml(s: string): string {
   return s.replace(/[&<>"]/g, (c) =>
-    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;",
+    c === "&" ? "&amp;" : c === "<" ? "&lt;" : c === ">" ? "&gt;" : "&quot;"
   );
 }
 

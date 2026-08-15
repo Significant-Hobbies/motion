@@ -120,14 +120,18 @@ export class KeyboardDebugController implements BodyController {
 
   tick(nowMs: number): void {
     const dt =
-      this.lastTick < 0 ? 0.016 : Math.min(0.05, (nowMs - this.lastTick) / 1000);
+      this.lastTick < 0
+        ? 0.016
+        : Math.min(0.05, (nowMs - this.lastTick) / 1000);
     this.lastTick = nowMs;
 
     // Drive lean/squat toward key targets with a ramp for a natural feel.
     const leanTarget = clampSigned(this.leanKey);
-    this.leanAmount += (leanTarget - this.leanAmount) * Math.min(1, KEY_RAMP * dt);
+    this.leanAmount +=
+      (leanTarget - this.leanAmount) * Math.min(1, KEY_RAMP * dt);
     const squatTarget = this.squatKey ? 1 : 0;
-    this.squatAmount += (squatTarget - this.squatAmount) * Math.min(1, KEY_RAMP * dt);
+    this.squatAmount +=
+      (squatTarget - this.squatAmount) * Math.min(1, KEY_RAMP * dt);
 
     // Hands: grab key closes both toward 0 (fist), otherwise open toward 1 (palm).
     const openTarget = this.grabKey ? 0 : 1;
@@ -136,8 +140,14 @@ export class KeyboardDebugController implements BodyController {
     this.rightHandOpen += (openTarget - this.rightHandOpen) * openStep;
 
     // Hands mirror around the cursor; a little apart so both are usable.
-    const lhTarget: [number, number] = [clamp01(this.mouseX - 0.12), this.mouseY];
-    const rhTarget: [number, number] = [clamp01(this.mouseX + 0.12), this.mouseY];
+    const lhTarget: [number, number] = [
+      clamp01(this.mouseX - 0.12),
+      this.mouseY,
+    ];
+    const rhTarget: [number, number] = [
+      clamp01(this.mouseX + 0.12),
+      this.mouseY,
+    ];
     this.joints.leftHand = lerp(this.joints.leftHand, lhTarget, LERP);
     this.joints.rightHand = lerp(this.joints.rightHand, rhTarget, LERP);
 
@@ -145,11 +155,31 @@ export class KeyboardDebugController implements BodyController {
     const torsoX = 0.5 + this.leanAmount * 0.28;
     const torsoY = 0.5 + this.squatAmount * 0.1;
     this.joints.torso = lerp(this.joints.torso, [torsoX, torsoY], LERP);
-    this.joints.head = lerp(this.joints.head, [torsoX, 0.18 + this.squatAmount * 0.16], LERP);
-    this.joints.leftKnee = lerp(this.joints.leftKnee, [torsoX - 0.08, 0.72 + this.squatAmount * 0.05], LERP);
-    this.joints.rightKnee = lerp(this.joints.rightKnee, [torsoX + 0.08, 0.72 + this.squatAmount * 0.05], LERP);
-    this.joints.leftFoot = lerp(this.joints.leftFoot, [torsoX - 0.08, 0.95], LERP);
-    this.joints.rightFoot = lerp(this.joints.rightFoot, [torsoX + 0.08, 0.95], LERP);
+    this.joints.head = lerp(
+      this.joints.head,
+      [torsoX, 0.18 + this.squatAmount * 0.16],
+      LERP
+    );
+    this.joints.leftKnee = lerp(
+      this.joints.leftKnee,
+      [torsoX - 0.08, 0.72 + this.squatAmount * 0.05],
+      LERP
+    );
+    this.joints.rightKnee = lerp(
+      this.joints.rightKnee,
+      [torsoX + 0.08, 0.72 + this.squatAmount * 0.05],
+      LERP
+    );
+    this.joints.leftFoot = lerp(
+      this.joints.leftFoot,
+      [torsoX - 0.08, 0.95],
+      LERP
+    );
+    this.joints.rightFoot = lerp(
+      this.joints.rightFoot,
+      [torsoX + 0.08, 0.95],
+      LERP
+    );
 
     if (this.moved) {
       this.health = "ok";
@@ -158,7 +188,10 @@ export class KeyboardDebugController implements BodyController {
       this.trackingQuality = 1;
       // Precise-fingertip stand-in tracks the debug hands.
       this.leftFingertip = [this.joints.leftHand[0], this.joints.leftHand[1]];
-      this.rightFingertip = [this.joints.rightHand[0], this.joints.rightHand[1]];
+      this.rightFingertip = [
+        this.joints.rightHand[0],
+        this.joints.rightHand[1],
+      ];
     } else {
       this.health = "no_signal";
       this.hasRequiredJoints = false;
@@ -179,6 +212,10 @@ export class KeyboardDebugController implements BodyController {
   }
 }
 
-function lerp(a: [number, number], b: [number, number], t: number): [number, number] {
+function lerp(
+  a: [number, number],
+  b: [number, number],
+  t: number
+): [number, number] {
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 }
