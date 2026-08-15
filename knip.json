@@ -3,8 +3,18 @@
   "ignoreExportsUsedInFile": true,
   "workspaces": {
     ".": {
-      "entry": ["scripts/**/*.mjs", "vitest.config.ts", "protocol/**/*.test.ts"],
-      "project": ["scripts/**/*.mjs", "vitest.config.ts", "protocol/**/*.ts"],
+      "entry": [
+        "landing/project-strip.js",
+        "scripts/**/*.mjs",
+        "vitest.config.ts",
+        "protocol/**/*.test.ts"
+      ],
+      "project": [
+        "landing/project-strip.js",
+        "scripts/**/*.mjs",
+        "vitest.config.ts",
+        "protocol/**/*.ts"
+      ],
       "ignoreDependencies": ["@biomejs/biome", "@vitest/coverage-v8", "jscpd"],
       "ignoreIssues": {
         "protocol/protocol.ts": ["types"]
