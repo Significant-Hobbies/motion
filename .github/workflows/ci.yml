@@ -25,7 +25,7 @@ jobs:
       - uses: astral-sh/setup-uv@v8.1.0
       - uses: actions/setup-node@v4
         with:
-          node-version: 20.19
+          node-version: 22
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
