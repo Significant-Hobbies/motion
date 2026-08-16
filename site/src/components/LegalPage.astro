@@ -1,0 +1,20 @@
+---
+import SiteLayout from "../layouts/SiteLayout.astro";
+import { site } from "../site.config";
+
+interface Props {
+  title: string;
+  lede: string;
+  path: string;
+  description?: string;
+}
+
+const { title, lede, path, description = lede } = Astro.props;
+---
+<SiteLayout title={`${title} — ${site.name}`} description={description} canonicalPath={path}>
+  <div class="legal-main shell">
+    <h1>{title}</h1>
+    <p class="legal-lede prose">{lede}</p>
+    <article class="legal-copy prose"><slot /></article>
+  </div>
+</SiteLayout>

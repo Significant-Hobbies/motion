@@ -1,0 +1,13 @@
+---
+import LegalPage from "../components/LegalPage.astro";
+import { site } from "../site.config";
+const page = site.legal.accessibility;
+---
+<LegalPage title={page.title} lede={page.lede} path="/accessibility/">
+  {page.sections.map((section) => (
+    <section>
+      <h2>{section.title}</h2>
+      <p>{section.body}</p>
+    </section>
+  ))}
+</LegalPage>

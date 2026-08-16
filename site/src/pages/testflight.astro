@@ -1,0 +1,29 @@
+---
+import LegalPage from "../components/LegalPage.astro";
+import { site } from "../site.config";
+
+const configuredBetaUrl = import.meta.env.PUBLIC_TESTFLIGHT_URL?.trim();
+const hasVerifiedBetaUrl = configuredBetaUrl?.startsWith("https://testflight.apple.com/");
+const page = site.legal.testflight;
+---
+<LegalPage title={page.title} lede={page.lede} path="/testflight/">
+  {hasVerifiedBetaUrl ? (
+    <section>
+      <h2>Join through Apple</h2>
+      <p>The verified enrollment link is ready. <a href={configuredBetaUrl}>Open {site.name} in TestFlight</a>.</p>
+    </section>
+  ) : (
+    <section>
+      <h2>Invite-only for now</h2>
+      <p>There is no public enrollment link yet. This page will not pretend otherwise.</p>
+    </section>
+  )}
+  <section>
+    <h2>What you will test</h2>
+    <p>{page.testing}</p>
+  </section>
+  <section>
+    <h2>What is not in this beta</h2>
+    <p>{page.notIncluded}</p>
+  </section>
+</LegalPage>
