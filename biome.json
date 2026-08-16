@@ -54,6 +54,7 @@
         "useConsistentTypeDefinitions": "off",
         "useDefaultSwitchClause": "off",
         "useDestructuring": "off",
+        "useFilenamingConvention": "off",
         "useNumberNamespace": "off",
         "useNumericSeparators": "off",
         "useReadonlyClassProperties": "off"
@@ -84,6 +85,16 @@
     {
       "includes": ["**/*.html", "**/*.css"],
       "formatter": { "enabled": false }
+    },
+    {
+      "includes": ["site/**/*.astro"],
+      "linter": {
+        "rules": {
+          "correctness": {
+            "noUnusedImports": "off"
+          }
+        }
+      }
     }
   ]
 }
