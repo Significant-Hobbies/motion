@@ -90,7 +90,7 @@ const scheme = site.colorScheme ?? "light";
     {site.appStoreId && storeUrl ? (
       <meta name="apple-itunes-app" content={`app-id=${site.appStoreId}`} />
     ) : null}
-    <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
     <title>{title}</title>
   </head>
   <body>
