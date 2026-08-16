@@ -7,6 +7,9 @@ movement to drive a game rendered **full-screen on the phone**. Mirror the phone
 any TV (AirPlay, Chromecast, or QuickTime to a Mac) to play on the big screen.
 **Everything runs on the phone — no server, no accounts, no cloud.**
 
+The public landing is the Astro app in `site/` (`pnpm --dir site dev`).
+`pnpm deploy` builds that folder. The older `landing/` HTML is leftover.
+
 ```
  iPhone:  front camera ─► Vision pose ─► game (WKWebView) ─► screen
                                                               │ mirror (AirPlay / Chromecast / QuickTime)
