@@ -29,7 +29,7 @@
     "check:landing": "pnpm --dir site install --ignore-workspace --frozen-lockfile && pnpm --dir site check",
     "quality": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test && pnpm build && pnpm check:landing && pnpm quality:coverage && pnpm quality:unused && pnpm quality:complexity && pnpm quality:duplication && pnpm quality:cycles && pnpm quality:dependencies && pnpm quality:suppressions && pnpm quality:hygiene",
     "check": "pnpm quality",
-    "deploy": "pnpm --dir site install --ignore-workspace --frozen-lockfile && pnpm --dir site build && pnpm exec wrangler pages deploy site/dist --project-name motion --branch main"
+    "deploy": "echo 'Motion landing deploys from ios-landings (pnpm run deploy:motion).' && exit 1"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8",

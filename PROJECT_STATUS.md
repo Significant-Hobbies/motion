@@ -27,6 +27,8 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
+- **2026-08-17** — Public landing cut over to the ios-landings factory on
+  the existing Cloudflare Pages project `motion`.
 - **2026-08-12** — Adopted the Fleet code-health standard across TypeScript and
   Swift: added focused protocol/controller/readiness tests, honest full-source
   coverage, unused-code and cycle checks, complexity/duplication/dependency/
