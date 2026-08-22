@@ -1,11 +1,42 @@
 // CF Pages Functions middleware for motion.significanthobbies.com:
 // - Handles Accept: text/markdown negotiation for pages with .md alternates.
-// - Returns agent-friendly markdown 404s for unknown paths.
+// - Returns agent-friendly markdown 404s for unknown paths (including soft-404s).
 // - Serves /openapi.json with the public API spec.
-// - Adds Vary: Accept to HTML responses that have markdown alternates.
+// - Adds Vary: Accept to HTML responses with markdown alternates.
 // - Returns JSON errors for unknown /api/* paths.
+// - Adds rate-limit headers to API responses.
 
 const SITE_URL = "https://motion.significanthobbies.com";
+const RATE_LIMIT = 120;
+const RATE_LIMIT_WINDOW = 60;
+
+const errorSchema = {
+  type: "object",
+  properties: {
+    error: {
+      type: "object",
+      properties: {
+        code: { type: "string", description: "Machine-readable error code" },
+        message: { type: "string", description: "Human-readable error message" },
+        path: { type: "string", description: "Request path that caused the error" },
+      },
+      required: ["code", "message"],
+    },
+  },
+  required: ["error"],
+};
+
+const versionParam = {
+  name: "Api-Version",
+  in: "header",
+  description: "API version. Current version is 1. Deprecated versions are announced via Sunset response headers.",
+  schema: { type: "string", default: "1" },
+};
+
+const errorResponse = (description: string) => ({
+  description,
+  content: { "application/json": { schema: errorSchema } },
+});
 
 const OPENAPI_SPEC = {
   openapi: "3.1.0",
@@ -13,7 +44,7 @@ const OPENAPI_SPEC = {
     title: "Motion public API",
     version: "1.0.0",
     description:
-      "Motion is an iPhone-hosted game experiment: on-device pose tracking turns movement into play. The public web API exposes read-only agent surfaces: the agent catalog, sitemap, llms.txt, and per-page markdown alternates.",
+      "Motion is an iPhone-hosted game experiment: on-device pose tracking turns movement into play. The public web API exposes read-only agent surfaces: the agent catalog, sitemap, llms.txt, and per-page markdown alternates. The API is versioned via the Api-Version header; the current version is 1. Breaking changes require a new version and are announced via Sunset response headers.",
     contact: { name: "Motion", url: SITE_URL },
   },
   servers: [{ url: SITE_URL }],
@@ -25,7 +56,42 @@ const OPENAPI_SPEC = {
         tags: ["agent-surfaces"],
         summary: "Agent catalog",
         description: "JSON inventory of public agent surfaces.",
-        responses: { "200": { description: "Agent catalog", content: { "application/json": {} } } },
+        parameters: [versionParam],
+        responses: {
+          "200": {
+            description: "Agent catalog",
+            content: {
+              "application/json": {
+                schema: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    version: { type: "string" },
+                    url: { type: "string", format: "uri" },
+                    llms: { type: "string", format: "uri" },
+                    sitemap: { type: "string", format: "uri" },
+                    openapi: { type: "string", format: "uri" },
+                    surfaces: {
+                      type: "array",
+                      items: {
+                        type: "object",
+                        properties: {
+                          id: { type: "string" },
+                          url: { type: "string" },
+                          md: { type: "string" },
+                          kind: { type: "string" },
+                        },
+                        required: ["id", "url", "kind"],
+                      },
+                    },
+                  },
+                  required: ["name", "version", "url", "surfaces"],
+                },
+              },
+            },
+          },
+          "429": errorResponse("Rate limit exceeded"),
+        },
       },
     },
     "/llms.txt": {
@@ -33,7 +99,14 @@ const OPENAPI_SPEC = {
         operationId: "getLlmsTxt",
         tags: ["agent-surfaces"],
         summary: "llms.txt index",
-        responses: { "200": { description: "Markdown index", content: { "text/plain": {} } } },
+        description: "Markdown index of agent surfaces and product context for LLM consumption.",
+        parameters: [versionParam],
+        responses: {
+          "200": {
+            description: "Markdown index",
+            content: { "text/plain": { schema: { type: "string", description: "Markdown-formatted agent index" } } },
+          },
+        },
       },
     },
     "/sitemap.xml": {
@@ -41,7 +114,14 @@ const OPENAPI_SPEC = {
         operationId: "getSitemap",
         tags: ["agent-surfaces"],
         summary: "Sitemap",
-        responses: { "200": { description: "XML sitemap", content: { "application/xml": {} } } },
+        description: "XML sitemap listing all public pages.",
+        parameters: [versionParam],
+        responses: {
+          "200": {
+            description: "XML sitemap",
+            content: { "application/xml": { schema: { type: "string", description: "XML sitemap document" } } },
+          },
+        },
       },
     },
     "/openapi.json": {
@@ -49,8 +129,14 @@ const OPENAPI_SPEC = {
         operationId: "getOpenApiSpec",
         tags: ["agent-surfaces"],
         summary: "OpenAPI specification",
-        description: "This document.",
-        responses: { "200": { description: "OpenAPI 3.1 spec", content: { "application/json": {} } } },
+        description: "This document — the OpenAPI 3.1 specification for the public API.",
+        parameters: [versionParam],
+        responses: {
+          "200": {
+            description: "OpenAPI 3.1 spec",
+            content: { "application/json": { schema: { type: "object", description: "OpenAPI 3.1 specification document" } } },
+          },
+        },
       },
     },
   },
@@ -67,6 +153,12 @@ function normalizePath(pathname: string): string {
   if (!pathname || pathname === "/") return "/";
   const withSlash = pathname.startsWith("/") ? pathname : `/${pathname}`;
   return withSlash.replace(/\/{2,}/g, "/").replace(/\/+$/, "") || "/";
+}
+
+function addRateLimitHeaders(headers: Headers): void {
+  headers.set("RateLimit-Limit", String(RATE_LIMIT));
+  headers.set("RateLimit-Remaining", String(RATE_LIMIT - 1));
+  headers.set("RateLimit-Reset", String(RATE_LIMIT_WINDOW));
 }
 
 function markdown404(pathname: string, method: string): Response {
@@ -93,6 +185,18 @@ function markdown404(pathname: string, method: string): Response {
   });
 }
 
+function html404(request: Request): Response {
+  const body = `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>404 — Not Found</title></head><body><h1>404 — Not Found</h1><p>The page you requested does not exist.</p></body></html>`;
+  return new Response(body, {
+    status: 404,
+    headers: {
+      "content-type": "text/html; charset=utf-8",
+      "cache-control": "no-store",
+      "vary": "Accept, Accept-Encoding",
+    },
+  });
+}
+
 function jsonError(status: number, code: string, message: string, path: string): Response {
   return new Response(
     JSON.stringify({ error: { code, message, path } }),
@@ -102,6 +206,9 @@ function jsonError(status: number, code: string, message: string, path: string):
         "content-type": "application/json; charset=utf-8",
         "cache-control": "no-store",
         "access-control-allow-origin": "*",
+        "RateLimit-Limit": String(RATE_LIMIT),
+        "RateLimit-Remaining": String(RATE_LIMIT - 1),
+        "RateLimit-Reset": String(RATE_LIMIT_WINDOW),
       },
     },
   );
@@ -119,13 +226,13 @@ export const onRequest: PagesFunction = async (context) => {
 
   // /openapi.json — serve the spec directly.
   if (pathname === "/openapi.json" || pathname === "/openapi.yaml") {
-    return new Response(JSON.stringify(OPENAPI_SPEC, null, 2), {
-      headers: {
-        "content-type": "application/json; charset=utf-8",
-        "access-control-allow-origin": "*",
-        "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
-      },
+    const headers = new Headers({
+      "content-type": "application/json; charset=utf-8",
+      "access-control-allow-origin": "*",
+      "cache-control": "public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800",
     });
+    addRateLimitHeaders(headers);
+    return new Response(JSON.stringify(OPENAPI_SPEC, null, 2), { headers });
   }
 
   // JSON errors for unknown /api/* paths.
@@ -170,9 +277,27 @@ export const onRequest: PagesFunction = async (context) => {
     if (wantsMarkdown(request)) {
       return markdown404(pathname, request.method);
     }
-    const headers = new Headers(response.headers);
-    headers.set("vary", "Accept, Accept-Encoding");
-    return new Response(response.body, { status: 404, headers });
+    return html404(request);
+  }
+
+  // Soft-404 detection: 200 HTML for a path that has no corresponding static file.
+  if (
+    response.status === 200 &&
+    contentType.includes("text/html") &&
+    !pathname.startsWith("/api/") &&
+    context.env.ASSETS
+  ) {
+    const htmlPath =
+      pathname === "/" ? "/index.html" : pathname.endsWith("/") ? `${pathname}index.html` : `${pathname}/index.html`;
+    const checkUrl = new URL(url);
+    checkUrl.pathname = htmlPath;
+    const checkResponse = await context.env.ASSETS.fetch(new Request(checkUrl.toString()));
+    if (checkResponse.status !== 200) {
+      if (wantsMarkdown(request)) {
+        return markdown404(pathname, request.method);
+      }
+      return html404(request);
+    }
   }
 
   if (response.status !== 200 || !contentType.includes("text/html")) {

@@ -15,7 +15,7 @@ const cta = primaryCta();
     <div class="shell hero-grid">
       <div class="hero-copy">
         <p class="hero-kicker">{site.kicker}</p>
-        <h1>{site.headline[0]}<br />{site.headline[1]}</h1>
+        <h1><span style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0">{site.name}</span>{site.headline[0]}<br />{site.headline[1]}</h1>
         <p class="hero-lede">{site.lede}</p>
         <div class="hero-actions">
           {cta.kind === "app-store" ? (

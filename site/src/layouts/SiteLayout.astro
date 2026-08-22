@@ -25,6 +25,21 @@ const jsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
+      "@type": "Organization",
+      name: "Significant Hobbies",
+      url: "https://significanthobbies.com",
+      contactPoint: {
+        "@type": "ContactPoint",
+        contactType: "customer support",
+        email: "support@significanthobbies.com",
+        url: `${site.url}/support/`
+      },
+      address: {
+        "@type": "PostalAddress",
+        addressCountry: "US"
+      }
+    },
+    {
       "@type": "SoftwareApplication",
       name: site.name,
       url: site.url,

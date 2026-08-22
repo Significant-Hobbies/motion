@@ -36,3 +36,15 @@ Canonical URL: https://motion.significanthobbies.com/
 - https://motion.significanthobbies.com/index.md
 - https://motion.significanthobbies.com/api/ai
 - https://motion.significanthobbies.com/openapi.json
+
+## Developer docs
+
+- [OpenAPI spec](https://motion.significanthobbies.com/openapi.json): OpenAPI 3.1 specification for the public API
+- [Agent catalog](https://motion.significanthobbies.com/api/ai): JSON inventory of public agent surfaces
+- [Sitemap](https://motion.significanthobbies.com/sitemap.xml): XML sitemap of all public pages
+
+## CLI
+
+- Local development: `pnpm install && pnpm run dev` (relay :1999 + web :5173)
+- Debug game: `http://localhost:5173/?debug=1` (keyboard/mouse, no phone required)
+- Quality gate: `pnpm check` (TypeScript, formatting, debt ratchets)
