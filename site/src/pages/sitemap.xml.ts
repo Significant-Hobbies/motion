@@ -1,6 +1,6 @@
 import { site } from "../site.config";
 
-const pages = ["", "privacy/", "support/", "terms/", "accessibility/", "testflight/", "index.md", "llms.txt", "api/ai"];
+const pages = ["", "privacy/", "support/", "terms/", "accessibility/", "testflight/", "index.md", "llms.txt", "api/ai", "openapi.json"];
 
 export const prerender = true;
 

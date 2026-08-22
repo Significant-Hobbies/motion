@@ -10,7 +10,8 @@ export function GET() {
     llms: `${site.url}/llms.txt`,
     llmsFull: null,
     sitemap: `${site.url}/sitemap.xml`,
-    markdown: { suffix: ".md", negotiation: false },
+    markdown: { suffix: ".md", negotiation: true },
+    openapi: `${site.url}/openapi.json`,
     surfaces: [
       { id: "home", url: "/", md: "/index.md", kind: "static" },
       { id: "privacy", url: "/privacy/", kind: "static" },

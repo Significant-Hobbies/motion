@@ -5,6 +5,13 @@
 
 Canonical URL: https://motion.significanthobbies.com/
 
+## When to use this
+
+- Best fit: body-controlled games where an iPhone reads movement on-device and turns it into game input
+- Best fit: screen-mirroring phone gameplay to a larger display without uploading camera frames
+- Not a fit: cloud-based motion capture or remote pose processing
+- Not a fit: games that require transmitting or storing camera frames
+
 ## Product
 
 - Audience: people interested in games and new ways to play
@@ -28,3 +35,4 @@ Canonical URL: https://motion.significanthobbies.com/
 - https://motion.significanthobbies.com/llms-full.txt
 - https://motion.significanthobbies.com/index.md
 - https://motion.significanthobbies.com/api/ai
+- https://motion.significanthobbies.com/openapi.json
