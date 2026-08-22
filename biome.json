@@ -85,16 +85,6 @@
     {
       "includes": ["**/*.html", "**/*.css"],
       "formatter": { "enabled": false }
-    },
-    {
-      "includes": ["site/**/*.astro"],
-      "linter": {
-        "rules": {
-          "correctness": {
-            "noUnusedImports": "off"
-          }
-        }
-      }
     }
   ]
 }
