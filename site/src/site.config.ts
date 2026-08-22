@@ -41,9 +41,9 @@ export const site: SiteConfig = {
     blush: "#111827", inkOnDark: "#e8eef7"
   },
   colorScheme: "dark",
-  hero: { image: "/images/screens/motion-maker-clean.jpg", alt: "Motion Maker on iPhone", caption: "The phone is the camera, the tracker, and the game." },
+  hero: { image: "/images/screens/motion-maker-clean.webp", alt: "Motion Maker on iPhone", caption: "The phone is the camera, the tracker, and the game." },
   gallery: [
-    { src: "/images/screens/motion-maker-clean.jpg", alt: "Motion Maker game on iPhone" }
+    { src: "/images/screens/motion-maker-clean.webp", alt: "Motion Maker game on iPhone" }
   ],
   applicationCategory: "GameApplication",
   availability: "unreleased",
@@ -53,7 +53,7 @@ export const site: SiteConfig = {
   chaptersTitle: "Move, and the game answers.",
   chaptersLede: "You should not need to understand pose estimation before it makes sense.",
   chapters: [
-    { name: "Play", title: "The body is the controller.", copy: "The iPhone reads pose locally and drives the game. A keyboard debug path exists for the web renderer, not as the product.", image: "/images/screens/motion-maker-clean.jpg", alt: "Motion Maker" }
+    { name: "Play", title: "The body is the controller.", copy: "The iPhone reads pose locally and drives the game. A keyboard debug path exists for the web renderer, not as the product.", image: "/images/screens/motion-maker-clean.webp", alt: "Motion Maker" }
   ],
   fit: { kicker: "An honest fit", title: "An experiment, not a console.", yes: "Motion fits if you want to try a more physical way to play with a phone you already have.", no: "It is not a shipped App Store game, a wearable sensor kit, or a cloud camera service." },
   privacy: { kicker: "On the phone", title: "Frames do not leave the device.", copy: "Pose is extracted on-device. There is no Motion account and no uploaded camera stream." },
