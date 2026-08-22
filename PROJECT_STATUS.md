@@ -27,11 +27,17 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
 
 ## Timeline
 
-- **2026-08-22** — Removed the superseded static `landing/` tree. The live public
-  landing is built from `site/` (Astro 7). Note that `ios-landings` also targets
-  the same Cloudflare Pages project `motion` from `products/motion/`; the most
-  recent production deployment came from this repo (`ca11e2d`), so the 2026-08-17
-  cutover below is not currently in effect. One of the two sources must be retired.
+- **2026-08-23** — Cut over to the `ios-landings` factory for real and removed
+  the `site/` fork. Both this repo and the factory targeted Cloudflare Pages
+  project `motion`, so whichever pushed last won. The factory now owns it: its
+  build was deployed to `motion.significanthobbies.com` and the live HTML is
+  byte-identical to `ios-landings/dist/motion/index.html`. The fork's better
+  `llms.txt` — the real best-fit/not-a-fit lines and the CLI block — was ported
+  into `ios-landings/products/motion/site.config.ts` first via new optional
+  `agentFit`/`agentCli` config, so nothing regressed; the live `llms.txt` is
+  byte-identical to what the fork served. `pnpm run deploy` here still fails on
+  purpose.
+- **2026-08-22** — Removed the superseded static `landing/` tree.
 - **2026-08-17** — Public landing cut over to the ios-landings factory on
   the existing Cloudflare Pages project `motion`.
 - **2026-08-12** — Adopted the Fleet code-health standard across TypeScript and
