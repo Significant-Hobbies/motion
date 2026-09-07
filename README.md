@@ -117,3 +117,14 @@ feel**, not infrastructure — which is exactly why v1 strips out all the server
 > on a physical device** (the Simulator has no camera). Key things to verify first:
 > that ReplayKit captures the WebView game content, and that the Vision left/right
 > joint mapping matches the player. See the verify list in `PROJECT_STATUS.md`.
+
+<!-- portfolio-retained-work:2026-09-07 -->
+## Retained work from the portfolio review
+
+These are unresolved requirements retained at the owner’s request. They are not completed features. This project is inactive; this list is reference material, not an active roadmap.
+
+### Verify Motion v1 on a physical device: camera, pose mapping, ReplayKit, and control feel
+
+Test camera, pose mapping, ReplayKit and control feel on a physical device; simulator or keyboard play does not close this task.
+
+Original requirements and discussion: [#38](https://github.com/Significant-Hobbies/motion/issues/38).
