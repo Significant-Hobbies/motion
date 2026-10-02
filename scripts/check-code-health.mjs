@@ -7,6 +7,7 @@ import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { summarizeDependencyAudit } from "./dependency-audit.mjs";
+import { countSwiftFormatDiagnostics } from "./swift-format-result.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const productionPaths = ["protocol", "server/src", "web/src", "ios/Sources"];
@@ -278,9 +279,7 @@ function checkSwiftFormat() {
     ["swift-format", "lint", "--strict", "--recursive", "ios/Sources"],
     { allowFailure: true }
   );
-  const diagnostics = `${result.stdout}\n${result.stderr}`
-    .split("\n")
-    .filter((line) => line.includes("error:")).length;
+  const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Swift format", { diagnostics }, { diagnostics: 4553 });
