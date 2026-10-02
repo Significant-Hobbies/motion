@@ -9,6 +9,9 @@ import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
 
+const { createCollector } = createRequire(import.meta.url)("./relay-diagnostics.cjs");
+
+try {
 const root = fileURLToPath(new URL("../", import.meta.url));
 const binary = realpathSync(
   resolve(root, "server/node_modules/partykit/dist/bin.mjs")
@@ -16,7 +19,8 @@ const binary = realpathSync(
 const partyRequire = createRequire(new URL(`file://${binary}`));
 const runtimeRequire = createRequire(partyRequire.resolve("miniflare"));
 const { WebSocket } = runtimeRequire("undici");
-const map = JSON.parse(readFileSync(`${binary}.map`, "utf8"));
+const mapBytes = readFileSync(`${binary}.map`);
+const map = JSON.parse(mapBytes);
 const manifest = JSON.parse(
   map.sourcesContent[map.sources.indexOf("../package.json")]
 );
@@ -24,6 +28,7 @@ const inventory = {
   node: process.version,
   partykit: manifest.version,
   binarySha256: createHash("sha256").update(readFileSync(binary)).digest("hex"),
+  mapSha256: createHash("sha256").update(mapBytes).digest("hex"),
   embeddedUndiciDeclaration: manifest.devDependencies.undici,
   embeddedUndiciSources: map.sources.filter((source) =>
     source.includes("/undici/")
@@ -107,7 +112,9 @@ if (process.argv[2] === "--inspect-bundle") {
 const fixtureDirectory = mkdtempSync(join(tmpdir(), "motion-relay-fixture-"));
 const port = Number(process.argv[2] ?? 21999);
 assert(Number.isInteger(port) && port > 1024 && port < 65536);
-let output = "";
+// No publisher has been qualified by this diagnostics-only correction.
+const evidence = createCollector(port, { ...inventory, publisherQualified: false });
+let phase = "relay ready";
 const child = spawn(
   process.execPath,
   [
@@ -127,6 +134,7 @@ const child = spawn(
     env: {
       XDG_CONFIG_HOME: fixtureDirectory,
       CI: "1",
+      RELAY_FIXTURE_PORT: String(port),
       NO_UPDATE_NOTIFIER: "1",
       NODE_OPTIONS: `--require=${resolve(root, "scripts/relay-fixture-guard.cjs")}`,
       PATH: "/usr/bin:/bin",
@@ -134,11 +142,13 @@ const child = spawn(
     stdio: ["ignore", "pipe", "pipe"],
   }
 );
+let childFailed = false;
+child.on("error", () => { childFailed = true; });
 child.stdout.on("data", (chunk) => {
-  output += chunk;
+  evidence.push("stdout", chunk);
 });
 child.stderr.on("data", (chunk) => {
-  output += chunk;
+  evidence.push("stderr", chunk);
 });
 const sockets = [];
 const checks = [];
@@ -157,13 +167,14 @@ function client() {
   };
 }
 async function until(predicate, label) {
+  phase = label;
   for (let i = 0; i < 100; i++) {
     if (predicate()) return;
-    if (child.exitCode !== null || child.signalCode !== null)
-      throw new Error(`PartyKit exited: ${output}`);
+    if (childFailed || child.exitCode !== null || child.signalCode !== null)
+      throw new Error("PartyKit exited");
     await delay(50);
   }
-  throw new Error(`Timed out: ${label}\n${output}`);
+  throw new Error("Qualification timed out");
 }
 async function connect(role) {
   const connection = client();
@@ -173,7 +184,7 @@ async function connect(role) {
 }
 try {
   await until(
-    () => output.includes("http://") && output.includes(String(port)),
+    () => evidence.ready(),
     "relay ready"
   );
   const display = await connect("display");
@@ -249,7 +260,7 @@ try {
     "duplicate display rejection, controller replacement, malformed input, disconnect presence"
   );
   await until(
-    () => output.includes('"path":"/json","bundled":true'),
+    () => evidence.qualified(),
     "bundled inspector fetch"
   );
   checks.push(
@@ -265,6 +276,10 @@ try {
       2
     )
   );
+} catch {
+  console.log(JSON.stringify({ status: "failed", phase, completedChecks: checks,
+    observations: evidence.observations(), provenance: "UNKNOWN" }));
+  process.exitCode = 1;
 } finally {
   clearTimeout(deadline);
   for (const socket of sockets) socket.close();
@@ -279,4 +294,9 @@ try {
       }, 2000).unref();
     }
   });
+}
+} catch {
+  console.log(JSON.stringify({ status: "failed", phase: "setup", completedChecks: [],
+    observations: [], provenance: "UNKNOWN" }));
+  process.exitCode = 1;
 }

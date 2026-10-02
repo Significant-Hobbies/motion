@@ -57,15 +57,15 @@ for (const name of ["readFile", "open", "writeFile"]) {
   };
 }
 syncBuiltinESMExports();
-diagnostics.channel("undici:request:create").subscribe(({ request }) => {
-  const origin = String(request.origin);
-  if (!/^http:\/\/(127\.0\.0\.1|localhost|\[::1\]):\d+$/u.test(origin)) {
-    throw new Error(`Fixture blocked external Undici request: ${origin}`);
-  }
-  const bundled = new Error("Fixture request provenance").stack.includes(
-    "partykit/dist/bin.mjs"
-  );
-  console.log(
-    `FIXTURE_UNDICI ${JSON.stringify({ origin, path: request.path, bundled })}`
-  );
-});
+const { hash, diagnosticCallback } = require("./relay-diagnostics.cjs");
+const identity = { guard: __filename, port: Number(process.env.RELAY_FIXTURE_PORT) };
+try {
+  identity.binary = fs.realpathSync(process.argv[1]);
+  identity.binarySha256 = hash(fs.readFileSync(identity.binary));
+  const bytes = fs.readFileSync(`${identity.binary}.map`);
+  identity.mapSha256 = hash(bytes);
+  identity.map = JSON.parse(bytes);
+} catch { /* Missing identity or map leaves provenance UNKNOWN. */ }
+diagnostics.channel("undici:request:create").subscribe(
+  diagnosticCallback(identity, (record) => process.stdout.write(record))
+);
