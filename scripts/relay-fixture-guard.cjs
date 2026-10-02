@@ -7,6 +7,7 @@ const { homedir } = require("node:os");
 const { resolve } = require("node:path");
 const { fileURLToPath } = require("node:url");
 const { syncBuiltinESMExports } = require("node:module");
+const { hash, diagnosticCallback } = require("./relay-diagnostics.cjs");
 const personalDirectory = homedir();
 const connect = net.Socket.prototype.connect;
 net.Socket.prototype.connect = function (...args) {
@@ -57,7 +58,6 @@ for (const name of ["readFile", "open", "writeFile"]) {
   };
 }
 syncBuiltinESMExports();
-const { hash, diagnosticCallback } = require("./relay-diagnostics.cjs");
 const identity = {
   guard: __filename,
   port: Number(process.env.RELAY_FIXTURE_PORT),
