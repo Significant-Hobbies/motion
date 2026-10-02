@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { summarizeDependencyAudit } from "./dependency-audit.mjs";
+import { countSwiftFormatDiagnostics } from "./swift-format-result.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const productionPaths = ["protocol", "server/src", "web/src", "ios/Sources"];
@@ -216,35 +218,15 @@ function checkDuplication() {
 
 function checkDependencies() {
   const result = run("pnpm", ["audit", "--json"], { allowFailure: true });
-  const report = JSON.parse(result.stdout);
-  const severe = Object.entries(report.advisories ?? {}).filter(
-    ([, advisory]) => ["critical", "high"].includes(advisory.severity)
-  );
-  const allowedHigh = new Set(["1114638", "1114640", "1121245"]);
-  const unexpected = severe.filter(([id]) => !allowedHigh.has(id));
-  const missing = [...allowedHigh].filter(
-    (id) => !severe.some(([observedId]) => observedId === id)
-  );
-  const reviewDate = new Date("2026-09-12T00:00:00Z");
+  const { dependencies, severe } = summarizeDependencyAudit(result);
   log(
-    `Dependencies: ${severe.length} critical/high advisories; ` +
-      `${severe.length - unexpected.length} accepted PartyKit/Miniflare findings.`
+    `Dependencies: ${dependencies} audited, ${severe.length} critical/high advisories.`
   );
-  if (Date.now() >= reviewDate.getTime()) {
+  if (severe.length > 0) {
     throw new Error(
-      "PartyKit dependency-risk exception expired on 2026-09-12 (#26)."
-    );
-  }
-  if (unexpected.length > 0) {
-    throw new Error(
-      `Unexpected critical/high advisories: ${unexpected
+      `Critical/high advisories must be resolved before passing: ${severe
         .map(([id, advisory]) => `${id}/${advisory.github_advisory_id}`)
         .join(", ")}`
-    );
-  }
-  if (missing.length > 0) {
-    log(
-      `Dependency risk improved; remove resolved exceptions: ${missing.join(", ")}.`
     );
   }
 }
@@ -297,9 +279,7 @@ function checkSwiftFormat() {
     ["swift-format", "lint", "--strict", "--recursive", "ios/Sources"],
     { allowFailure: true }
   );
-  const diagnostics = `${result.stdout}\n${result.stderr}`
-    .split("\n")
-    .filter((line) => line.includes("error:")).length;
+  const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Swift format", { diagnostics }, { diagnostics: 4553 });
