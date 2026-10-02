@@ -11,8 +11,8 @@ export function summarizeDependencyAudit(result) {
   let report;
   try {
     report = JSON.parse(result.stdout);
-  } catch {
-    throw new Error("Dependency audit returned invalid JSON.");
+  } catch (error) {
+    throw new Error("Dependency audit returned invalid JSON.", { cause: error });
   }
 
   if (
