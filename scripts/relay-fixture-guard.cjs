@@ -58,14 +58,21 @@ for (const name of ["readFile", "open", "writeFile"]) {
 }
 syncBuiltinESMExports();
 const { hash, diagnosticCallback } = require("./relay-diagnostics.cjs");
-const identity = { guard: __filename, port: Number(process.env.RELAY_FIXTURE_PORT) };
+const identity = {
+  guard: __filename,
+  port: Number(process.env.RELAY_FIXTURE_PORT),
+};
 try {
   identity.binary = fs.realpathSync(process.argv[1]);
   identity.binarySha256 = hash(fs.readFileSync(identity.binary));
   const bytes = fs.readFileSync(`${identity.binary}.map`);
   identity.mapSha256 = hash(bytes);
   identity.map = JSON.parse(bytes);
-} catch { /* Missing identity or map leaves provenance UNKNOWN. */ }
-diagnostics.channel("undici:request:create").subscribe(
-  diagnosticCallback(identity, (record) => process.stdout.write(record))
-);
+} catch {
+  /* Missing identity or map leaves provenance UNKNOWN. */
+}
+diagnostics
+  .channel("undici:request:create")
+  .subscribe(
+    diagnosticCallback(identity, (record) => process.stdout.write(record))
+  );
