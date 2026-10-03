@@ -220,31 +220,12 @@ function checkDependencies() {
   const severe = Object.entries(report.advisories ?? {}).filter(
     ([, advisory]) => ["critical", "high"].includes(advisory.severity)
   );
-  const allowedHigh = new Set(["1114638", "1114640", "1121245"]);
-  const unexpected = severe.filter(([id]) => !allowedHigh.has(id));
-  const missing = [...allowedHigh].filter(
-    (id) => !severe.some(([observedId]) => observedId === id)
-  );
-  const reviewDate = new Date("2026-09-12T00:00:00Z");
-  log(
-    `Dependencies: ${severe.length} critical/high advisories; ` +
-      `${severe.length - unexpected.length} accepted PartyKit/Miniflare findings.`
-  );
-  if (Date.now() >= reviewDate.getTime()) {
+  log(`Dependencies: ${severe.length} critical/high advisories.`);
+  if (severe.length > 0) {
     throw new Error(
-      "PartyKit dependency-risk exception expired on 2026-09-12 (#26)."
-    );
-  }
-  if (unexpected.length > 0) {
-    throw new Error(
-      `Unexpected critical/high advisories: ${unexpected
+      `Critical/high advisories: ${severe
         .map(([id, advisory]) => `${id}/${advisory.github_advisory_id}`)
         .join(", ")}`
-    );
-  }
-  if (missing.length > 0) {
-    log(
-      `Dependency risk improved; remove resolved exceptions: ${missing.join(", ")}.`
     );
   }
 }
