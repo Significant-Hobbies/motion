@@ -12,6 +12,7 @@ export default defineConfig({
     },
     include: [
       "scripts/**/*.test.mjs",
+      "server/scripts/**/*.test.mjs",
       "protocol/**/*.test.ts",
       "server/src/**/*.test.ts",
       "web/src/**/*.test.ts",

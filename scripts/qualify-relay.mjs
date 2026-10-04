@@ -2,12 +2,20 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdtempSync, readFileSync, realpathSync } from "node:fs";
-import { builtinModules, createRequire } from "node:module";
+import {
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { dirname, resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { setTimeout as delay } from "node:timers/promises";
+
+import { qualifyRuntime } from "./relay-runtime.mjs";
 
 const { createCollector } = createRequire(import.meta.url)(
   "./relay-diagnostics.cjs"
@@ -39,50 +47,21 @@ try {
     ).length,
     miniflare: runtimeRequire("miniflare/package.json").version,
     resolvedUndici: runtimeRequire("undici/package.json").version,
-    securityRemediation: "unproven: override does not rewrite embedded bytes",
+    securityRemediation:
+      "patched entry uses resolved Undici; old inert factories retained",
+    publisherVersion: runtimeRequire("undici/package.json").version,
+    publisherSha256: createHash("sha256")
+      .update(
+        readFileSync(runtimeRequire.resolve("undici/lib/core/request.js"))
+      )
+      .digest("hex"),
   };
+  const entryMockFetch = await qualifyRuntime(
+    binary,
+    partyRequire,
+    runtimeRequire
+  );
   if (process.argv[2] === "--inspect-bundle") {
-    // Execute the executable's own CommonJS factories, stopping before CLI code.
-    // No source-map recompilation or substituted external Undici implementation.
-    const bytes = readFileSync(binary, "utf8");
-    const start = bytes.indexOf("var __create = Object.create;");
-    const factory = bytes.indexOf("var require_undici = __commonJS({");
-    const end = bytes.indexOf("\n// ", factory);
-    assert(start > 0 && factory > start && end > factory);
-    const builtins = new Set(
-      builtinModules.map((name) => name.replace(/^node:/u, ""))
-    );
-    const embedded = new Function(
-      "require",
-      "__filename",
-      "__dirname",
-      `${bytes.slice(start, end)}\nreturn require_undici();\n//# sourceURL=${binary}`
-    )(
-      (name) => {
-        assert(
-          builtins.has(name.replace(/^node:/u, "")),
-          `Unexpected bundled dependency: ${name}`
-        );
-        return partyRequire(name);
-      },
-      binary,
-      dirname(binary)
-    );
-    const mock = new embedded.MockAgent();
-    mock.disableNetConnect();
-    mock
-      .get("http://fixture.invalid")
-      .intercept({ path: "/bundled", method: "GET" })
-      .reply(200, "embedded-bytes-ok");
-    try {
-      const response = await embedded.fetch("http://fixture.invalid/bundled", {
-        dispatcher: mock,
-      });
-      assert.equal(await response.text(), "embedded-bytes-ok");
-      mock.assertNoPendingInterceptors();
-    } finally {
-      await mock.close();
-    }
     const sources = map.sources.flatMap((source, index) =>
       source.includes("/undici/") ? [[source, map.sourcesContent[index]]] : []
     );
@@ -100,8 +79,7 @@ try {
     const report = JSON.stringify(
       {
         ...inventory,
-        embeddedMockFetch:
-          "PASS: executable factories; network disabled; not a relay assertion",
+        embeddedMockFetch: entryMockFetch,
         embeddedSourcesSha256: createHash("sha256")
           .update(JSON.stringify(sources))
           .digest("hex"),
@@ -118,10 +96,26 @@ try {
   const fixtureDirectory = mkdtempSync(join(tmpdir(), "motion-relay-fixture-"));
   const port = Number(process.argv[2] ?? 21999);
   assert(Number.isInteger(port) && port > 1024 && port < 65536);
-  // No publisher has been qualified by this diagnostics-only correction.
+  const reservation = createServer();
+  await new Promise((done, reject) => {
+    reservation.once("error", reject);
+    reservation.listen(0, "127.0.0.1", done);
+  });
+  const inspectorPort = reservation.address().port;
+  await new Promise((done) => reservation.close(done));
+  writeFileSync(
+    join(fixtureDirectory, "partykit.json"),
+    JSON.stringify({
+      name: "motion-fixture",
+      main: resolve(root, "server/src/server.ts"),
+      compatibilityDate: "2025-01-01",
+    })
+  );
+  // The executable entry was qualified before the real child is launched.
   const evidence = createCollector(port, {
     ...inventory,
-    publisherQualified: false,
+    inspectorPort,
+    publisherQualified: true,
   });
   let phase = "relay ready";
   const child = spawn(
@@ -131,39 +125,59 @@ try {
       resolve(root, "scripts/relay-fixture-guard.cjs"),
       binary,
       "dev",
+      "--config",
+      join(fixtureDirectory, "partykit.json"),
       "--port",
       String(port),
       "--no-hotkeys",
       "--disable-request-cf-fetch",
       "--persist",
       join(fixtureDirectory, "state"),
+      "--unstable_outdir",
+      join(fixtureDirectory, "build"),
     ],
     {
-      cwd: resolve(root, "server"),
+      cwd: fixtureDirectory,
       env: {
         XDG_CONFIG_HOME: fixtureDirectory,
+        TMPDIR: fixtureDirectory,
+        RELAY_FIXTURE_DIRECTORY: fixtureDirectory,
+        RELAY_FIXTURE_SOURCE_ROOT: root,
         CI: "1",
         RELAY_FIXTURE_PORT: String(port),
+        RELAY_FIXTURE_INSPECTOR_PORT: String(inspectorPort),
         NO_UPDATE_NOTIFIER: "1",
-        NODE_OPTIONS: `--require=${resolve(root, "scripts/relay-fixture-guard.cjs")}`,
+        NODE_OPTIONS: `--require=${JSON.stringify(resolve(root, "scripts/relay-fixture-guard.cjs"))}`,
         PATH: "/usr/bin:/bin",
       },
       stdio: ["ignore", "pipe", "pipe"],
+      detached: process.platform !== "win32",
     }
   );
   let childFailed = false;
+  let childOutput = "";
   child.on("error", () => {
     childFailed = true;
   });
   child.stdout.on("data", (chunk) => {
+    childOutput = (childOutput + chunk).slice(-8192);
     evidence.push("stdout", chunk);
   });
   child.stderr.on("data", (chunk) => {
+    childOutput = (childOutput + chunk).slice(-8192);
     evidence.push("stderr", chunk);
   });
   const sockets = [];
   const checks = [];
-  const deadline = setTimeout(() => child.kill("SIGTERM"), 25000);
+  function stop(signal) {
+    try {
+      if (process.platform === "win32") child.kill(signal);
+      else process.kill(-child.pid, signal);
+    } catch (error) {
+      if (error.code !== "ESRCH") throw error;
+    }
+  }
+  const deadline = setTimeout(() => stop("SIGTERM"), 25000);
   function client() {
     const socket = new WebSocket(`ws://127.0.0.1:${port}/parties/main/FIX234`);
     const messages = [];
@@ -177,9 +191,9 @@ try {
       send: (message) => socket.send(JSON.stringify(message)),
     };
   }
-  async function until(predicate, label) {
+  async function until(predicate, label, attempts = 100) {
     phase = label;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < attempts; i++) {
       if (predicate()) return;
       if (childFailed || child.exitCode !== null || child.signalCode !== null)
         throw new Error("PartyKit exited");
@@ -197,7 +211,7 @@ try {
     return connection;
   }
   try {
-    await until(() => evidence.ready(), "relay ready");
+    await until(() => evidence.ready(), "relay ready", 300);
     const display = await connect("display");
     const controller = await connect("controller");
     await until(
@@ -270,21 +284,24 @@ try {
     checks.push(
       "duplicate display rejection, controller replacement, malformed input, disconnect presence"
     );
-    await until(() => evidence.qualified(), "bundled inspector fetch");
+    await until(() => evidence.qualified(), "qualified inspector fetch");
     checks.push(
-      "PartyKit embedded Undici inspector fetch through actual dev runtime"
+      "PartyKit inspector fetch through qualified resolved Undici 6.29.0"
     );
     console.log(
       JSON.stringify(
         {
           ...inventory,
           checks,
+          observations: evidence.observations(),
         },
         null,
         2
       )
     );
-  } catch {
+  } catch (error) {
+    // Private, bounded fixture diagnostics; never included in published evidence.
+    writeFileSync(join(fixtureDirectory, "diagnostics.txt"), childOutput);
     console.log(
       JSON.stringify({
         status: "failed",
@@ -292,19 +309,20 @@ try {
         completedChecks: checks,
         observations: evidence.observations(),
         provenance: "UNKNOWN",
+        failureType: error.name,
       })
     );
     process.exitCode = 1;
   } finally {
     clearTimeout(deadline);
     for (const socket of sockets) socket.close();
-    child.kill("SIGTERM");
+    stop("SIGTERM");
     await new Promise((done) => {
       if (child.exitCode !== null) done();
       else {
         child.once("exit", done);
         setTimeout(() => {
-          child.kill("SIGKILL");
+          stop("SIGKILL");
           done();
         }, 2000).unref();
       }

@@ -98,6 +98,23 @@ it("frames readiness at every stdout split and keeps stderr separate", () => {
   expect(collector.ready()).toBe(true);
 });
 
+it("matches the inspector independently of the relay readiness port", () => {
+  const scoped = { ...identity, inspectorPort: 22001 };
+  const collector = createCollector(identity.port, scoped);
+  const callback = diagnosticCallback(scoped, (value) =>
+    collector.push("stdout", value)
+  );
+  callback({ request });
+  expect(collector.observations()).toHaveLength(0);
+  callback({ request: { ...request, origin: "http://127.0.0.1:22001" } });
+  expect(collector.observations()).toHaveLength(1);
+  collector.push("stdout", "Ready http://127.0.0.1:22001/\n");
+  expect(collector.ready()).toBe(false);
+  collector.push("stdout", "Ready http://127.0.0.1:21999/\n");
+  expect(collector.ready()).toBe(true);
+  expect(collector.qualified()).toBe(false);
+});
+
 it("frames records across chunks and newlines with bounded, redacted retention", () => {
   const value = record();
   for (let split = 0; split <= value.length; split++) {

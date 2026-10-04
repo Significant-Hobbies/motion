@@ -2,11 +2,11 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { expect, it } from "vitest";
 
-it("executes embedded Undici without sockets and emits complete parseable evidence", () => {
+it("executes the patched Undici entry without sockets and emits parseable evidence", () => {
   const script = fileURLToPath(new URL("./qualify-relay.mjs", import.meta.url));
   const result = spawnSync(process.execPath, [script, "--inspect-bundle"], {
     encoding: "utf8",
-    timeout: 3000,
+    timeout: 10000,
     env: { PATH: "/usr/bin:/bin" },
   });
   expect(result.status, result.stderr).toBe(0);

@@ -106,8 +106,10 @@ function diagnosticCallback(
       request.method === "GET" &&
       request.path === "/json" &&
       ["127.0.0.1", "localhost", "[::1]"].some(
-        (host) => origin === `http://${host}:${identity.port}`
+        (host) =>
+          origin === `http://${host}:${identity.inspectorPort ?? identity.port}`
       );
+    const proof = publisher(identity);
     emit(
       `${PREFIX}${JSON.stringify({
         method: matched ? "GET" : null,
@@ -115,11 +117,54 @@ function diagnosticCallback(
         path: matched ? "/json" : null,
         binarySha256: digest(identity.binarySha256),
         mapSha256: digest(identity.mapSha256),
-        bundled: "UNKNOWN",
+        bundled: proof ? "FALSE" : "UNKNOWN",
+        publisher: proof,
         observation: observe(capture(), identity),
       })}\n`
     );
   };
+}
+
+// Capture V8's actual call sites before string formatting or source-map mapping.
+// A caller-supplied string stack can provide observations, never qualification.
+function publisher(identity) {
+  const prepare = Error.prepareStackTrace;
+  try {
+    Error.prepareStackTrace = (_error, callSites) => callSites;
+    const error = new Error("Fixture publisher observation");
+    Error.captureStackTrace(error, publisher);
+    const sites = error.stack;
+    let owned = false;
+    let dispatched = false;
+    for (const site of sites) {
+      const file = site.getFileName();
+      if (!dispatched && [__filename, identity.guard].includes(file)) {
+        owned = true;
+        continue;
+      }
+      if (owned && file === "node:diagnostics_channel") {
+        dispatched = true;
+        continue;
+      }
+      if (
+        !dispatched ||
+        file !== identity.publisher ||
+        identity.publisherVersion !== "6.29.0" ||
+        !digest(identity.publisherSha256)
+      )
+        return null;
+      return {
+        kind: "external-undici",
+        version: identity.publisherVersion,
+        sourceSha256: identity.publisherSha256,
+      };
+    }
+  } catch {
+    /* Unqualified frames leave the publisher unknown. */
+  } finally {
+    Error.prepareStackTrace = prepare;
+  }
+  return null;
 }
 
 function createCollector(port, identity) {
@@ -147,7 +192,9 @@ function createCollector(port, identity) {
               record?.method === "GET" &&
               record.path === "/json" &&
               ["127.0.0.1", "localhost", "[::1]"].some(
-                (host) => record.origin === `http://${host}:${port}`
+                (host) =>
+                  record.origin ===
+                  `http://${host}:${identity.inspectorPort ?? port}`
               ) &&
               digest(record.binarySha256) &&
               digest(record.mapSha256) &&
@@ -164,6 +211,16 @@ function createCollector(port, identity) {
                 bundled: ["TRUE", "FALSE"].includes(record.bundled)
                   ? record.bundled
                   : "UNKNOWN",
+                publisher:
+                  record.publisher?.kind === "external-undici" &&
+                  record.publisher.version === "6.29.0" &&
+                  digest(record.publisher.sourceSha256)
+                    ? {
+                        kind: "external-undici",
+                        version: "6.29.0",
+                        sourceSha256: record.publisher.sourceSha256,
+                      }
+                    : null,
                 observation: safeObservation(record.observation),
               });
             }
@@ -181,7 +238,13 @@ function createCollector(port, identity) {
     ready: () => ready,
     qualified: () =>
       identity.publisherQualified === true &&
-      records.some((record) => record.bundled === "TRUE"),
+      records.some(
+        (record) =>
+          record.bundled === "FALSE" &&
+          record.publisher?.kind === "external-undici" &&
+          record.publisher.version === identity.publisherVersion &&
+          record.publisher.sourceSha256 === identity.publisherSha256
+      ),
     observations: () => records.slice(),
   };
 }

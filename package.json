@@ -44,9 +44,13 @@
   },
   "pnpm": {
     "overrides": {
-      "brace-expansion@>=5.0.0 <6.0.0": "5.0.11",
+      "brace-expansion@>=5.0.0 <6.0.0": "5.0.12",
       "nanoid@>=3.0.0 <4.0.0": "3.3.18",
-      "undici@^5.28.5": "6.29.0"
+      "miniflare>undici": "6.29.0"
+    },
+    "patchedDependencies": {
+      "partykit@0.0.115": "patches/partykit@0.0.115.patch"
     }
-  }
+  },
+  "packageManager": "pnpm@10.33.2"
 }

@@ -21,8 +21,8 @@
       }
     },
     "server": {
-      "entry": ["src/server.ts"],
-      "project": ["src/**/*.ts"]
+      "entry": ["src/server.ts", "scripts/**/*.test.mjs"],
+      "project": ["src/**/*.ts", "scripts/**/*.mjs"]
     },
     "web": {
       "entry": ["src/app/main.ts", "src/sdk/index.ts", "src/**/*.test.ts"],

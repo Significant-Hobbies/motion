@@ -20,8 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: astral-sh/setup-uv@v8.1.0
       - uses: actions/setup-node@v4
         with:
@@ -29,6 +27,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Qualify real relay in a network-isolated namespace
+        run: |
+          relay_node_executable="$(command -v node)"
+          sudo unshare --net -- sh -c 'ip link set lo up; exec "$@"' \
+            motion-relay "$relay_node_executable" scripts/qualify-relay.mjs
 
   ios:
     name: iOS build and Swift quality
@@ -37,8 +40,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 10
       - uses: actions/setup-node@v4
         with:
           node-version: 20.19
