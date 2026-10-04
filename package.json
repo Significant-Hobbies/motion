@@ -52,6 +52,5 @@
     "patchedDependencies": {
       "partykit@0.0.115": "patches/partykit@0.0.115.patch"
     }
-  },
-  "packageManager": "pnpm@10.33.2"
+  }
 }
