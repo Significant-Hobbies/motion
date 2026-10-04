@@ -1,0 +1,50 @@
+diff --git a/dist/bin.mjs b/dist/bin.mjs
+--- a/dist/bin.mjs
++++ b/dist/bin.mjs
+@@ -33159,7 +33159,7 @@
+ // ../../node_modules/undici/index.js
+ var require_undici = __commonJS({
+   "../../node_modules/undici/index.js"(exports2, module2) {
+-    "use strict";
++    "use strict"; const motionRuntimeRequire = __require("node:module").createRequire(__require.resolve("miniflare")); if (motionRuntimeRequire("undici/package.json").version !== "6.29.0") throw new Error("Motion requires qualified Undici 6.29.0"); module2.exports = motionRuntimeRequire("undici"); return;
+     var Client = require_client();
+     var Dispatcher = require_dispatcher();
+     var Pool = require_pool();
+@@ -94207,7 +94207,7 @@
+     () => config.vectorize || config.ai ? getUserDetails(config) : null,
+     [config]
+   );
+-  const portForRuntimeInspector = getPortForServer("runtime-inspector");
++  const portForRuntimeInspector = getPortForServer("runtime-inspector", process.env.RELAY_FIXTURE_INSPECTOR_PORT ? Number(process.env.RELAY_FIXTURE_INSPECTOR_PORT) : void 0);
+   const [server] = (0, import_react26.useState)(() => new MiniflareServer());
+   const [inspectorUrl, setInspectorUrl] = (0, import_react26.useState)(
+     void 0
+@@ -94411,7 +94411,7 @@
+                       https: options.https,
+                       httpsKeyPath: options.httpsKeyPath,
+                       httpsCertPath: options.httpsCertPath,
+-                      host: "0.0.0.0",
++                      host: process.env.RELAY_FIXTURE_DIRECTORY ? "127.0.0.1" : "0.0.0.0",
+                       log: new Log(5, { prefix: "pk" }),
+                       verbose: options.verbose,
+                       inspectorPort: portForRuntimeInspector,
+@@ -94514,7 +94514,7 @@
+                         }))
+                       ],
+-                      modulesRoot: process.cwd(),
++                      modulesRoot: process.env.RELAY_FIXTURE_DIRECTORY ? process.env.RELAY_FIXTURE_SOURCE_ROOT : process.cwd(),
+                       script: code
+                     },
+                     { signal: abortController.signal }
+                   );
+@@ -94641,8 +94641,8 @@
+       onReady?.(event.url.hostname, parseInt(event.url.port));
+       try {
+         const jsonUrl = `http://127.0.0.1:${portForRuntimeInspector}/json`;
+-        const res = await (0, import_undici4.fetch)(jsonUrl);
+-        const body = await res.json();
++        const motionInspectorAgent = new import_undici4.Agent();
++        const body = await (async () => { try { const res = await (0, import_undici4.fetch)(jsonUrl, { dispatcher: motionInspectorAgent }); return await res.json(); } finally { await motionInspectorAgent.close(); } })();
+         const debuggerUrl = body?.find(
+           ({ id }) => id.startsWith("core:user")
+         )?.webSocketDebuggerUrl;

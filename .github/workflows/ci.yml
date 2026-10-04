@@ -27,6 +27,11 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - name: Qualify real relay in a network-isolated namespace
+        run: |
+          relay_node_executable="$(command -v node)"
+          sudo unshare --net -- sh -c 'ip link set lo up; exec "$@"' \
+            motion-relay "$relay_node_executable" scripts/qualify-relay.mjs
 
   ios:
     name: iOS build and Swift quality

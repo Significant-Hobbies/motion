@@ -7,7 +7,12 @@ settings:
 overrides:
   brace-expansion@>=5.0.0 <6.0.0: 5.0.12
   nanoid@>=3.0.0 <4.0.0: 3.3.18
-  undici@^5.28.4: 6.29.0
+  miniflare>undici: 6.29.0
+
+patchedDependencies:
+  partykit@0.0.115:
+    hash: 1ecdc9d440bad4e005701d93e71dd2c47e98ee45d3bc6cb2129e294fb68d73b3
+    path: patches/partykit@0.0.115.patch
 
 importers:
 
@@ -39,7 +44,7 @@ importers:
     devDependencies:
       partykit:
         specifier: ^0.0.115
-        version: 0.0.115
+        version: 0.0.115(patch_hash=1ecdc9d440bad4e005701d93e71dd2c47e98ee45d3bc6cb2129e294fb68d73b3)
       typescript:
         specifier: ^5.6.0
         version: 5.9.3
@@ -2616,7 +2621,7 @@ snapshots:
       '@oxc-resolver/binding-win32-arm64-msvc': 11.24.2
       '@oxc-resolver/binding-win32-x64-msvc': 11.24.2
 
-  partykit@0.0.115:
+  partykit@0.0.115(patch_hash=1ecdc9d440bad4e005701d93e71dd2c47e98ee45d3bc6cb2129e294fb68d73b3):
     dependencies:
       '@cloudflare/workers-types': 4.20240718.0
       clipboardy: 4.0.0

@@ -6,6 +6,8 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { summarizeDependencyAudit } from "./dependency-audit.mjs";
+import { countSwiftFormatDiagnostics } from "./swift-format-result.mjs";
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const productionPaths = ["protocol", "server/src", "web/src", "ios/Sources"];
@@ -216,14 +218,13 @@ function checkDuplication() {
 
 function checkDependencies() {
   const result = run("pnpm", ["audit", "--json"], { allowFailure: true });
-  const report = JSON.parse(result.stdout);
-  const severe = Object.entries(report.advisories ?? {}).filter(
-    ([, advisory]) => ["critical", "high"].includes(advisory.severity)
+  const { dependencies, severe } = summarizeDependencyAudit(result);
+  log(
+    `Dependencies: ${dependencies} audited, ${severe.length} critical/high advisories.`
   );
-  log(`Dependencies: ${severe.length} critical/high advisories.`);
   if (severe.length > 0) {
     throw new Error(
-      `Critical/high advisories: ${severe
+      `Critical/high advisories must be resolved before passing: ${severe
         .map(([id, advisory]) => `${id}/${advisory.github_advisory_id}`)
         .join(", ")}`
     );
@@ -278,9 +279,7 @@ function checkSwiftFormat() {
     ["swift-format", "lint", "--strict", "--recursive", "ios/Sources"],
     { allowFailure: true }
   );
-  const diagnostics = `${result.stdout}\n${result.stderr}`
-    .split("\n")
-    .filter((line) => line.includes("error:")).length;
+  const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Swift format", { diagnostics }, { diagnostics: 4553 });
