@@ -17,7 +17,6 @@ import SwiftUI
 
 struct SetupView: View {
     @Environment(AppModel.self) private var model
-    @Environment(\.horizontalSizeClass) private var hSizeClass
     @Environment(\.verticalSizeClass) private var vSizeClass
     let session: PoseSession
 
@@ -114,15 +113,18 @@ struct SetupView: View {
             model.cameraFacing = next
             session.switchCamera(to: next)
         } label: {
-            Image(systemName: model.cameraFacing == .front
-                  ? "arrow.triangle.2.circlepath.camera.fill"   // on front → tap to go wide-rear
-                  : "camera.fill")                               // on wide-rear → tap to go front
-                .font(.title3)
-                .foregroundStyle(.white.opacity(0.8))
+            Image(
+                systemName: model.cameraFacing == .front
+                    ? "arrow.triangle.2.circlepath.camera.fill"  // on front → tap to go wide-rear
+                    : "camera.fill"
+            )  // on wide-rear → tap to go front
+            .font(.title3)
+            .foregroundStyle(.white.opacity(0.8))
         }
-        .accessibilityLabel(model.cameraFacing == .front
-                            ? "Switch to wide rear camera"
-                            : "Switch to front camera")
+        .accessibilityLabel(
+            model.cameraFacing == .front
+                ? "Switch to wide rear camera"
+                : "Switch to front camera")
     }
 
     /// Expanded settings: Mac LAN IP (used for BOTH the game and the relay), the "Stream
@@ -215,7 +217,7 @@ struct SetupView: View {
         // never shows green while the laptop shows nothing. Keeps the two coherent.
         if model.peerConnected { return .green }
         switch model.streamConnection {
-        case .connected: return .yellow   // on the relay, but the laptop isn't here yet
+        case .connected: return .yellow  // on the relay, but the laptop isn't here yet
         case .connecting, .reconnecting: return .yellow
         case .failed: return .red
         case .idle: return .gray
@@ -287,10 +289,12 @@ struct SetupView: View {
     /// orientation-suggestive icon. Deliberately quiet — it's context, not a control.
     private var modeChip: some View {
         HStack(spacing: 4) {
-            Image(systemName: model.framingMode == .fullBody
-                  ? "figure.stand"
-                  : "hand.raised.fill")
-                .font(.caption2)
+            Image(
+                systemName: model.framingMode == .fullBody
+                    ? "figure.stand"
+                    : "hand.raised.fill"
+            )
+            .font(.caption2)
             Text(model.framingMode.label)
                 .font(.caption2.bold())
         }

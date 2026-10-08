@@ -88,13 +88,11 @@ enum CompositeExporter {
         // Do NOT touch the WebM file with AVAsset — decode WILL fail. Export the camera
         // clip alone so the user still gets their performance, and tell them why.
         guard isDecodableByAVFoundation(mime: clip.mime) else {
-            let message = "Gameplay clip was WebM; on-device compositing needs an MP4 " +
-                "recording — use a Safari/Chrome display that records MP4. Saved your " +
-                "camera clip on its own."
-            if let url = await exportCameraOnly(camera: camera) {
-                return .cameraOnlyFallback(url: url, message: message)
-            }
-            return .failed(message: message)
+            let message =
+                "Gameplay clip was WebM; on-device compositing needs an MP4 "
+                + "recording — use a Safari/Chrome display that records MP4. Saved your "
+                + "camera clip on its own."
+            return await cameraOnlyFallback(camera: camera, message: message, failure: message)
         }
 
         // ── Normal PiP composite ─────────────────────────────────────────────────
@@ -107,13 +105,10 @@ enum CompositeExporter {
             let gameplayTrack = await firstVideoTrack(of: gameplayAsset)
         else {
             // If the "MP4" turned out to be undecodable after all, degrade to camera-only.
-            if let url = await exportCameraOnly(camera: camera) {
-                return .cameraOnlyFallback(
-                    url: url,
-                    message: "Couldn't read the gameplay clip; saved your camera clip alone."
-                )
-            }
-            return .failed(message: "Couldn't read either video track.")
+            return await cameraOnlyFallback(
+                camera: camera,
+                message: "Couldn't read the gameplay clip; saved your camera clip alone.",
+                failure: "Couldn't read either video track.")
         }
 
         // Natural sizes/transforms.
@@ -130,11 +125,8 @@ enum CompositeExporter {
         let gameplayStartMs = clip.startOffsetMs
 
         // The later start defines t=0; trim the earlier track's head by the difference.
-        let cameraHeadTrimMs = max(0, gameplayStartMs - cameraStartMs)
-        let gameplayHeadTrimMs = max(0, cameraStartMs - gameplayStartMs)
-
-        let cameraHeadTrim = CMTime(seconds: cameraHeadTrimMs / 1000.0, preferredTimescale: 600)
-        let gameplayHeadTrim = CMTime(seconds: gameplayHeadTrimMs / 1000.0, preferredTimescale: 600)
+        let (cameraHeadTrim, gameplayHeadTrim) = headTrims(
+            cameraStartMs: cameraStartMs, gameplayStartMs: gameplayStartMs)
 
         // Remaining playable duration of each after the head trim.
         let cameraRemaining = CMTimeSubtract(cameraDuration, cameraHeadTrim)
@@ -143,44 +135,19 @@ enum CompositeExporter {
         let overlap = CMTimeMinimum(cameraRemaining, gameplayRemaining)
         guard overlap.isValid, overlap.seconds > 0.05 else {
             // No meaningful overlap (clocks too far apart / one clip empty) → camera only.
-            if let url = await exportCameraOnly(camera: camera) {
-                return .cameraOnlyFallback(
-                    url: url,
-                    message: "Clips didn't overlap in time; saved your camera clip alone."
-                )
-            }
-            return .failed(message: "Recordings didn't overlap in time.")
+            return await cameraOnlyFallback(
+                camera: camera,
+                message: "Clips didn't overlap in time; saved your camera clip alone.",
+                failure: "Recordings didn't overlap in time.")
         }
 
-        let composition = AVMutableComposition()
-        guard
-            let compCamera = composition.addMutableTrack(
-                withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
-            let compGameplay = composition.addMutableTrack(
-                withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
-        else {
-            return .failed(message: "Couldn't build the composition.")
-        }
-
-        // Insert both trimmed ranges at composition t=0.
-        do {
-            try compGameplay.insertTimeRange(
-                CMTimeRange(start: gameplayHeadTrim, duration: overlap),
-                of: gameplayTrack, at: .zero)
-            try compCamera.insertTimeRange(
-                CMTimeRange(start: cameraHeadTrim, duration: overlap),
-                of: cameraTrack, at: .zero)
-        } catch {
-            return .failed(message: "Couldn't assemble the composite timeline.")
-        }
-
-        // Optionally carry the gameplay audio if present (game SFX/music).
-        if let gameplayAudio = await firstAudioTrack(of: gameplayAsset),
-           let compAudio = composition.addMutableTrack(
-                withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid) {
-            try? compAudio.insertTimeRange(
-                CMTimeRange(start: gameplayHeadTrim, duration: overlap),
-                of: gameplayAudio, at: .zero)
+        let timeline: ComposedTimeline
+        switch await composeTimeline(
+            cameraTrack: cameraTrack, gameplayTrack: gameplayTrack, gameplayAsset: gameplayAsset,
+            cameraHeadTrim: cameraHeadTrim, gameplayHeadTrim: gameplayHeadTrim, overlap: overlap)
+        {
+        case .success(let built): timeline = built
+        case .failure(let failure): return .failed(message: failure.message)
         }
 
         // ── Render sizes (apply preferredTransform so rotated sources render upright) ──
@@ -195,13 +162,96 @@ enum CompositeExporter {
             return .failed(message: "Gameplay clip had zero dimensions.")
         }
 
-        // Gameplay layer instruction: apply its own transform so it renders upright,
-        // full-frame at the origin.
-        let gameplayLayer = AVMutableVideoCompositionLayerInstruction(assetTrack: compGameplay)
-        gameplayLayer.setTransform(gameplayTransform, at: .zero)
+        let cameraFinal = cameraInsetTransform(
+            cameraTransform: cameraTransform, cameraRenderSize: cameraRenderSize,
+            outputSize: outputSize, layout: layout)
+        let videoComposition = makeVideoComposition(
+            compCamera: timeline.camera, compGameplay: timeline.gameplay,
+            cameraFinal: cameraFinal, gameplayTransform: gameplayTransform,
+            overlap: overlap, outputSize: outputSize)
 
-        // Camera inset transform: start from the camera's upright transform, then scale
-        // down to the inset width and translate into the chosen corner.
+        return await exportComposite(timeline.composition, videoComposition: videoComposition)
+    }
+
+    // MARK: - Composite helpers
+
+    /// Degrade to a camera-only export; `failure` is reported if even that fails.
+    private static func cameraOnlyFallback(
+        camera: CameraRecording, message: String, failure: String
+    ) async -> CompositeResult {
+        if let url = await exportCameraOnly(camera: camera) {
+            return .cameraOnlyFallback(url: url, message: message)
+        }
+        return .failed(message: failure)
+    }
+
+    private struct TimelineFailure: Error {
+        let message: String
+    }
+
+    private struct ComposedTimeline {
+        let composition: AVMutableComposition
+        let camera: AVMutableCompositionTrack
+        let gameplay: AVMutableCompositionTrack
+    }
+
+    /// Build the composition: both trimmed video ranges at t=0, plus optional gameplay audio.
+    private static func composeTimeline(
+        cameraTrack: AVAssetTrack, gameplayTrack: AVAssetTrack, gameplayAsset: AVAsset,
+        cameraHeadTrim: CMTime, gameplayHeadTrim: CMTime, overlap: CMTime
+    ) async -> Result<ComposedTimeline, TimelineFailure> {
+        let composition = AVMutableComposition()
+        guard
+            let compCamera = composition.addMutableTrack(
+                withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid),
+            let compGameplay = composition.addMutableTrack(
+                withMediaType: .video, preferredTrackID: kCMPersistentTrackID_Invalid)
+        else {
+            return .failure(TimelineFailure(message: "Couldn't build the composition."))
+        }
+
+        // Insert both trimmed ranges at composition t=0.
+        do {
+            try compGameplay.insertTimeRange(
+                CMTimeRange(start: gameplayHeadTrim, duration: overlap),
+                of: gameplayTrack, at: .zero)
+            try compCamera.insertTimeRange(
+                CMTimeRange(start: cameraHeadTrim, duration: overlap),
+                of: cameraTrack, at: .zero)
+        } catch {
+            return .failure(TimelineFailure(message: "Couldn't assemble the composite timeline."))
+        }
+
+        // Optionally carry the gameplay audio if present (game SFX/music).
+        if let gameplayAudio = await firstAudioTrack(of: gameplayAsset),
+            let compAudio = composition.addMutableTrack(
+                withMediaType: .audio, preferredTrackID: kCMPersistentTrackID_Invalid)
+        {
+            try? compAudio.insertTimeRange(
+                CMTimeRange(start: gameplayHeadTrim, duration: overlap),
+                of: gameplayAudio, at: .zero)
+        }
+        return .success(
+            ComposedTimeline(composition: composition, camera: compCamera, gameplay: compGameplay))
+    }
+
+    /// Head trims that put both clips in phase: the later start defines t=0, and the
+    /// earlier clip is trimmed at its head by the difference.
+    private static func headTrims(cameraStartMs: Double, gameplayStartMs: Double) -> (CMTime, CMTime) {
+        let cameraHeadTrimMs = max(0, gameplayStartMs - cameraStartMs)
+        let gameplayHeadTrimMs = max(0, cameraStartMs - gameplayStartMs)
+
+        let cameraHeadTrim = CMTime(seconds: cameraHeadTrimMs / 1000.0, preferredTimescale: 600)
+        let gameplayHeadTrim = CMTime(seconds: gameplayHeadTrimMs / 1000.0, preferredTimescale: 600)
+        return (cameraHeadTrim, gameplayHeadTrim)
+    }
+
+    /// Camera inset transform: start from the camera's upright transform, then scale
+    /// down to the inset width and translate into the chosen corner.
+    private static func cameraInsetTransform(
+        cameraTransform: CGAffineTransform, cameraRenderSize: CGSize,
+        outputSize: CGSize, layout: PiPLayout
+    ) -> CGAffineTransform {
         let insetWidth = outputSize.width * layout.widthFraction
         let cameraUprightW = abs(cameraRenderSize.width)
         let cameraUprightH = abs(cameraRenderSize.height)
@@ -218,6 +268,19 @@ enum CompositeExporter {
         var cameraFinal = cameraTransform
         cameraFinal = cameraFinal.concatenating(CGAffineTransform(scaleX: scale, y: scale))
         cameraFinal = cameraFinal.concatenating(CGAffineTransform(translationX: tx, y: ty))
+        return cameraFinal
+    }
+
+    /// Layer instructions + video composition: gameplay full-frame, camera inset on top.
+    private static func makeVideoComposition(
+        compCamera: AVMutableCompositionTrack, compGameplay: AVMutableCompositionTrack,
+        cameraFinal: CGAffineTransform, gameplayTransform: CGAffineTransform,
+        overlap: CMTime, outputSize: CGSize
+    ) -> AVMutableVideoComposition {
+        // Gameplay layer instruction: apply its own transform so it renders upright,
+        // full-frame at the origin.
+        let gameplayLayer = AVMutableVideoCompositionLayerInstruction(assetTrack: compGameplay)
+        gameplayLayer.setTransform(gameplayTransform, at: .zero)
 
         let cameraLayer = AVMutableVideoCompositionLayerInstruction(assetTrack: compCamera)
         cameraLayer.setTransform(cameraFinal, at: .zero)
@@ -230,16 +293,23 @@ enum CompositeExporter {
 
         let videoComposition = AVMutableVideoComposition()
         videoComposition.instructions = [instruction]
-        videoComposition.frameDuration = CMTime(value: 1, timescale: 30) // 30 fps output
+        videoComposition.frameDuration = CMTime(value: 1, timescale: 30)  // 30 fps output
         videoComposition.renderSize = outputSize
+        return videoComposition
+    }
 
+    /// Export the composed timeline to a temp mp4.
+    private static func exportComposite(
+        _ composition: AVMutableComposition, videoComposition: AVMutableVideoComposition
+    ) async -> CompositeResult {
         // ── Export ───────────────────────────────────────────────────────────────
         let outURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("motion-composite-\(UUID().uuidString).mp4")
         try? FileManager.default.removeItem(at: outURL)
 
-        guard let export = AVAssetExportSession(
-            asset: composition, presetName: AVAssetExportPresetHighestQuality)
+        guard
+            let export = AVAssetExportSession(
+                asset: composition, presetName: AVAssetExportPresetHighestQuality)
         else {
             return .failed(message: "Couldn't create the exporter.")
         }
@@ -276,8 +346,9 @@ enum CompositeExporter {
             .appendingPathComponent("motion-cam-only-\(UUID().uuidString).mp4")
         try? FileManager.default.removeItem(at: outURL)
 
-        guard let export = AVAssetExportSession(
-            asset: asset, presetName: AVAssetExportPresetHighestQuality)
+        guard
+            let export = AVAssetExportSession(
+                asset: asset, presetName: AVAssetExportPresetHighestQuality)
         else { return nil }
         export.outputURL = outURL
         export.outputFileType = .mp4
@@ -323,8 +394,10 @@ enum CompositeExporter {
         case .bottomLeading:
             return (margin, outputSize.height - insetHeight - margin)
         case .bottomTrailing:
-            return (outputSize.width - insetWidth - margin,
-                    outputSize.height - insetHeight - margin)
+            return (
+                outputSize.width - insetWidth - margin,
+                outputSize.height - insetHeight - margin
+            )
         }
     }
 }

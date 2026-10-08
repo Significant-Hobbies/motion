@@ -100,10 +100,11 @@ final class SetupEvaluator {
         // Distance from head→feet span in frame. Too tall a span = too close;
         // too short = too far.
         if let head = frame.joints[.head],
-           let lf = frame.joints[.leftFoot],
-           let rf = frame.joints[.rightFoot] {
+            let lf = frame.joints[.leftFoot],
+            let rf = frame.joints[.rightFoot]
+        {
             let footY = max(lf[1], rf[1])
-            let bodySpan = footY - head[1] // both top-left origin, feet below head
+            let bodySpan = footY - head[1]  // both top-left origin, feet below head
             if bodySpan > 0.95 {
                 return verdict(.tooClose, "Step back a little.")
             }
@@ -153,9 +154,10 @@ final class SetupEvaluator {
     /// Evaluate a lost frame (no body detected at all).
     func evaluateLost() -> SetupVerdict {
         goodSince = nil
-        return SetupVerdict(tracking: .lost,
-                            guidance: "No one in view. Point the camera at your body.",
-                            ready: false)
+        return SetupVerdict(
+            tracking: .lost,
+            guidance: "No one in view. Point the camera at your body.",
+            ready: false)
     }
 
     // MARK: - Debounce

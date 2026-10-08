@@ -23,14 +23,15 @@
 
 import Foundation
 import Observation
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 /// High-level screen the app should show. Drives `ContentView` routing.
 enum Phase: Sendable, Equatable {
-    case setup        // camera up, guiding the player into frame
-    case game         // full-screen web game; pose streams in-process via PoseBridge
+    case setup  // camera up, guiding the player into frame
+    case game  // full-screen web game; pose streams in-process via PoseBridge
 }
 
 /// Detects a "clap" purely from the two tracked HAND joints (`joints.leftHand` /
@@ -70,7 +71,7 @@ struct ClapDetector {
 
         // Fire on the closing edge: armed + hands now together + past the debounce window.
         if armed, separation < closedThreshold, now - lastClapAt >= minInterval {
-            armed = false            // require a re-separation before the next clap
+            armed = false  // require a re-separation before the next clap
             lastClapAt = now
             return true
         }
@@ -82,10 +83,12 @@ struct ClapDetector {
     /// treat a hand sitting exactly at the origin as "not present" to avoid false claps
     /// when one hand isn't tracked.
     private func handSeparation(_ j: Joints) -> Double? {
-        let l = j.leftHand, r = j.rightHand
+        let l = j.leftHand
+        let r = j.rightHand
         guard l.count == 2, r.count == 2 else { return nil }
         if isFallback(l) || isFallback(r) { return nil }
-        let dx = l[0] - r[0], dy = l[1] - r[1]
+        let dx = l[0] - r[0]
+        let dy = l[1] - r[1]
         return (dx * dx + dy * dy).squareRoot()
     }
 
@@ -110,7 +113,7 @@ final class AppModel {
     var gameURL: URL? {
         switch GameConfig.source {
         case .devServer: return GameConfig.devServerURL(host: devServerIP)
-        case .bundled:   return GameConfig.bundledIndexURL()
+        case .bundled: return GameConfig.bundledIndexURL()
         }
     }
 
@@ -252,8 +255,10 @@ final class AppModel {
     ///   - tracking: setup verdict from `SetupEvaluator`
     ///   - guidance: matching human guidance string
     ///   - ready: whether setup has been good long enough
-    func ingest(joints: Joints?, quality: Double, tracking: TrackingState,
-                guidance: String, ready: Bool, hands: HandState?, fingertips: Fingertips? = nil) {
+    func ingest(
+        joints: Joints?, quality: Double, tracking: TrackingState,
+        guidance: String, ready: Bool, hands: HandState?, fingertips: Fingertips? = nil
+    ) {
         self.joints = joints
         self.quality = quality
         self.tracking = tracking
@@ -270,8 +275,9 @@ final class AppModel {
         // Skip in `.game`: the web game handles its own input, so claps are ignored there.
         // We always feed the detector so its arm/debounce state stays coherent, but only
         // publish the event outside the game phase.
-        let clapped = clapDetector.update(joints: joints,
-                                          now: ProcessInfo.processInfo.systemUptime)
+        let clapped = clapDetector.update(
+            joints: joints,
+            now: ProcessInfo.processInfo.systemUptime)
         if clapped, phase != .game {
             clapCount &+= 1
         }
@@ -279,8 +285,9 @@ final class AppModel {
         // While playing, forward pose + tracking (with hands + fingertips) into the web game
         // in-process. PoseBridge handles change-detection for tracking and the ~30 Hz throttle.
         if phase == .game {
-            bridge.pushLivePose(joints: joints, quality: quality, tracking: tracking,
-                                hands: self.hands, fingertips: self.fingertips)
+            bridge.pushLivePose(
+                joints: joints, quality: quality, tracking: tracking,
+                hands: self.hands, fingertips: self.fingertips)
         }
 
         // Stream to the browser relay IN ADDITION to (and independent of) the local game.
@@ -330,7 +337,7 @@ final class AppModel {
     /// streaming poses (see `ingest`). The relay is on the SAME Mac as the dev server, so we
     /// reuse `devServerIP` as the host. Idempotent-ish: replaces any existing socket.
     private func startStreaming() {
-        stopStreaming()                     // clear any stale socket first
+        stopStreaming()  // clear any stale socket first
         let code = roomCode.trimmingCharacters(in: .whitespaces).uppercased()
         guard !code.isEmpty else {
             streamToWebsite = false
@@ -348,7 +355,7 @@ final class AppModel {
         // background the app and drop the relay socket. This does NOT stop iOS suspending a
         // fully-backgrounded app, but it prevents the common idle auto-lock disconnect.
         #if canImport(UIKit)
-        UIApplication.shared.isIdleTimerDisabled = true
+            UIApplication.shared.isIdleTimerDisabled = true
         #endif
     }
 
@@ -362,7 +369,7 @@ final class AppModel {
         // Re-enable auto-lock now that we're no longer streaming, so the phone can sleep
         // normally when idle. Paired with the enable in `startStreaming()`.
         #if canImport(UIKit)
-        UIApplication.shared.isIdleTimerDisabled = false
+            UIApplication.shared.isIdleTimerDisabled = false
         #endif
     }
 }

@@ -16,7 +16,12 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
-import { distPointToSegment, roundRect } from "../canvas-utils";
+import {
+  beginScoreHud,
+  distPointToSegment,
+  handJoint,
+  roundRect,
+} from "../canvas-utils";
 
 // ── Interaction tuning ────────────────────────────────────────────────────────
 
@@ -240,13 +245,9 @@ export class MotionMaker implements Game {
    * but it's too jittery at body distance to drive grab or a cursor.)
    */
   private trackHands(dt: number, body: BodyController): void {
-    const map: Record<Which, readonly [number, number]> = {
-      left: body.joints.leftHand,
-      right: body.joints.rightHand,
-    };
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
-      const [nx, ny] = map[which];
+      const [nx, ny] = handJoint(body, which);
       if (dt > 0) {
         const ivx = (nx - h.x) / dt;
         const ivy = (ny - h.y) / dt;
@@ -744,16 +745,7 @@ export class MotionMaker implements Game {
   private renderHud(r: Renderer): void {
     const { ctx } = r;
     const p = r.area;
-    ctx.save();
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#f4f7ff";
-    ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
-    ctx.textAlign = "left";
-    ctx.fillText(
-      String(this.score).padStart(4, "0"),
-      p.x + r.sx(0.03),
-      p.y + r.sy(0.03)
-    );
+    beginScoreHud(r, this.score, 4);
 
     ctx.fillStyle = "#8a95b5";
     ctx.font = `${Math.round(r.sx(0.024))}px system-ui`;

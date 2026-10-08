@@ -250,7 +250,8 @@ final class CameraController: NSObject, @unchecked Sendable {
         // would be un-mirrored and pose would appear left/right-swapped on the rear camera —
         // that's the #1 rear-camera on-device verify item.
         if let connection = videoOutput.connection(with: .video),
-           connection.isVideoMirroringSupported {
+            connection.isVideoMirroringSupported
+        {
             connection.automaticallyAdjustsVideoMirroring = false
             connection.isVideoMirrored = true
         }
@@ -348,7 +349,8 @@ final class CameraController: NSObject, @unchecked Sendable {
     /// which is the invariant PoseEstimator's coordinate mapping depends on.
     private func applyCaptureAngle(_ angle: CGFloat) {
         guard let connection = videoOutput.connection(with: .video),
-              connection.isVideoRotationAngleSupported(angle) else { return }
+            connection.isVideoRotationAngleSupported(angle)
+        else { return }
         connection.videoRotationAngle = angle
     }
 
@@ -357,7 +359,8 @@ final class CameraController: NSObject, @unchecked Sendable {
     private func applyPreviewAngle(_ angle: CGFloat) {
         DispatchQueue.main.async { [weak self] in
             guard let connection = self?.previewLayer?.connection,
-                  connection.isVideoRotationAngleSupported(angle) else { return }
+                connection.isVideoRotationAngleSupported(angle)
+            else { return }
             connection.videoRotationAngle = angle
         }
     }
@@ -366,9 +369,11 @@ final class CameraController: NSObject, @unchecked Sendable {
 // MARK: - Sample buffer delegate
 
 extension CameraController: AVCaptureVideoDataOutputSampleBufferDelegate {
-    func captureOutput(_ output: AVCaptureOutput,
-                       didOutput sampleBuffer: CMSampleBuffer,
-                       from connection: AVCaptureConnection) {
+    func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
         guard let pixelBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
         // The connection is kept horizon-level by the RotationCoordinator (see
         // `installRotationCoordinator`) and ALWAYS mirrored (both front and wide-rear cameras

@@ -22,7 +22,6 @@
 
 import Foundation
 import Observation
-import Photos
 
 @MainActor
 @Observable
@@ -30,13 +29,13 @@ final class RecordingController {
 
     /// Coarse state machine surfaced to the UI.
     enum State: Sendable, Equatable {
-        case idle              // not recording
-        case armed             // user opted in; waiting for the display to start
-        case recording         // camera recording locally, gameplay in progress
-        case receiving(Double) // gameplay clip transferring (0..1 progress)
-        case compositing       // building the PiP video / exporting
-        case saved             // saved to Photos
-        case failed(String)    // something went wrong (message for the UI)
+        case idle  // not recording
+        case armed  // user opted in; waiting for the display to start
+        case recording  // camera recording locally, gameplay in progress
+        case receiving(Double)  // gameplay clip transferring (0..1 progress)
+        case compositing  // building the PiP video / exporting
+        case saved  // saved to Photos
+        case failed(String)  // something went wrong (message for the UI)
     }
 
     private(set) var state: State = .idle
@@ -164,7 +163,10 @@ final class RecordingController {
 
     private func startRecording(sessionId sid: String, anchorMs: Double) {
         // Only start if this matches our armed session (or adopt if the display drives it).
-        if sessionId == nil { sessionId = sid; sessionAnchorMs = anchorMs }
+        if sessionId == nil {
+            sessionId = sid
+            sessionAnchorMs = anchorMs
+        }
         guard sessionId == sid else { return }
         camera.start()
         state = .recording
@@ -191,14 +193,14 @@ final class RecordingController {
     /// Idempotent + order-independent: called after the camera finishes AND after each
     /// clip chunk, so whichever completes last actually triggers the export.
     private func maybeComposite() {
-        if case .compositing = state { return }            // already running
-        guard let cameraRecording else { return }          // camera not finished yet
-        guard clipReceiver.isComplete else { return }       // clip still arriving
-        guard let clip = completedClip else { return }      // finalized clip in hand
+        if case .compositing = state { return }  // already running
+        guard let cameraRecording else { return }  // camera not finished yet
+        guard clipReceiver.isComplete else { return }  // clip still arriving
+        guard let clip = completedClip else { return }  // finalized clip in hand
         guard let anchor = sessionAnchorMs else { return }
 
         state = .compositing
-        cameraTapHost?.setSampleBufferTap(nil) // no longer need the tap
+        cameraTapHost?.setSampleBufferTap(nil)  // no longer need the tap
 
         Task { [weak self] in
             let result = await CompositeExporter.export(
@@ -225,32 +227,14 @@ final class RecordingController {
     /// Save a finished video to the Photos library, requesting add-only permission first.
     private func save(url: URL, note: String?) async {
         self.note = note
-        let status = await requestPhotosAddPermission()
-        guard status == .authorized || status == .limited else {
-            state = .failed("Photos access denied — enable it in Settings to save your clip.")
-            cleanupSession()
-            return
-        }
-        do {
-            try await PHPhotoLibrary.shared().performChanges {
-                let req = PHAssetCreationRequest.forAsset()
-                req.addResource(with: .video, fileURL: url, options: nil)
-            }
+        switch await PhotosVideoSaver.save(url: url) {
+        case .saved:
             lastSavedURL = url
             state = .saved
-        } catch {
-            state = .failed("Couldn't save to Photos: \(error.localizedDescription)")
+        case .failed(let message):
+            state = .failed(message)
         }
         cleanupSession()
-    }
-
-    /// Request ADD-ONLY Photos authorization (matches `NSPhotoLibraryAddUsageDescription`).
-    private func requestPhotosAddPermission() async -> PHAuthorizationStatus {
-        let current = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-        if current == .notDetermined {
-            return await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-        }
-        return current
     }
 
     /// Clear per-session scratch state but keep `lastSavedURL`/`note` for the UI.

@@ -55,7 +55,7 @@ final class RoomSocket {
     private let session: URLSession
 
     private var task: URLSessionWebSocketTask?
-    private var isRunning = false          // user wants a connection to exist
+    private var isRunning = false  // user wants a connection to exist
     private var reconnectAttempt = 0
     private var pingTimer: Task<Void, Never>?
     private var receiveActive = false
@@ -113,8 +113,10 @@ final class RoomSocket {
             delegate?.roomSocket(self, didChangeState: .failed(reason: "Invalid room URL."))
             return
         }
-        delegate?.roomSocket(self, didChangeState:
-            reconnectAttempt == 0 ? .connecting : .reconnecting(attempt: reconnectAttempt))
+        delegate?.roomSocket(
+            self,
+            didChangeState:
+                reconnectAttempt == 0 ? .connecting : .reconnecting(attempt: reconnectAttempt))
 
         let ws = session.webSocketTask(with: url)
         task = ws
@@ -134,9 +136,9 @@ final class RoomSocket {
         send(JoinMessage(role: .controller, name: playerName))
     }
 
-    func send(_ pose: PosePacket)    { send(encodable: pose) }
+    func send(_ pose: PosePacket) { send(encodable: pose) }
     func send(_ status: StatusMessage) { send(encodable: status) }
-    func send(_ calib: CalibMessage)   { send(encodable: calib) }
+    func send(_ calib: CalibMessage) { send(encodable: calib) }
     /// Send a recording control frame (arm/start/stop/cancel) to the display.
     func send(_ rec: RecControlMessage) { send(encodable: rec) }
     private func send(_ join: JoinMessage) { send(encodable: join) }
@@ -210,7 +212,7 @@ final class RoomSocket {
         pingTimer?.cancel()
         pingTimer = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 2_000_000_000) // 2s
+                try? await Task.sleep(nanoseconds: 2_000_000_000)  // 2s
                 guard let self, self.isRunning else { return }
                 await MainActor.run {
                     self.send(encodable: PingMessage(t: self.nowMS()))

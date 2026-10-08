@@ -131,10 +131,10 @@ function checkCoverage() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   checkMinimums("TypeScript coverage", observed, {
-    lines: 6.4,
-    branches: 10.06,
-    functions: 7.01,
-    statements: 6.49,
+    lines: 39.4,
+    branches: 37.7,
+    functions: 43.5,
+    statements: 39.9,
   });
 }
 
@@ -170,9 +170,9 @@ function checkComplexity() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Complexity", observed, {
-    violations: 3,
+    violations: 2,
     maxCcn: 22,
-    maxLength: 180,
+    maxLength: 149,
     maxParams: 7,
   });
 }
@@ -210,9 +210,9 @@ function checkDuplication() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Duplication", observed, {
-    clones: 5,
-    duplicatedLines: 65,
-    percentage: 0.5543237250554324,
+    clones: 0,
+    duplicatedLines: 0,
+    percentage: 0,
   });
 }
 
@@ -276,13 +276,21 @@ function checkHygiene() {
 function checkSwiftFormat() {
   const result = run(
     "xcrun",
-    ["swift-format", "lint", "--strict", "--recursive", "ios/Sources"],
+    [
+      "swift-format",
+      "lint",
+      "--strict",
+      "--configuration",
+      ".swift-format",
+      "--recursive",
+      "ios/Sources",
+    ],
     { allowFailure: true }
   );
   const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
-  failRegressions("Swift format", { diagnostics }, { diagnostics: 4553 });
+  failRegressions("Swift format", { diagnostics }, { diagnostics: 8 });
 }
 
 function checkSwiftUnused() {
@@ -323,7 +331,7 @@ function checkSwiftUnused() {
     `Swift unused-code debt: ${observed.findings} Periphery ${version} findings.`
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
-  failRegressions("Swift unused code", observed, { findings: 68 });
+  failRegressions("Swift unused code", observed, { findings: 66 });
 }
 
 const checks = {

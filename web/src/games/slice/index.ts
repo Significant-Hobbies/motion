@@ -15,7 +15,7 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
-import { distPointToSegment } from "../canvas-utils";
+import { beginScoreHud, distPointToSegment, handJoint } from "../canvas-utils";
 
 // ── Tuning ──────────────────────────────────────────────────────────────────────
 
@@ -203,13 +203,9 @@ export class Slice implements Game {
   }
 
   private trackHands(dt: number, body: BodyController): void {
-    const map: Record<Which, readonly [number, number]> = {
-      left: body.joints.leftHand,
-      right: body.joints.rightHand,
-    };
     for (const which of ["left", "right"] as const) {
       const h = this.hands[which];
-      const [nx, ny] = map[which];
+      const [nx, ny] = handJoint(body, which);
 
       if (!handActive(body, which)) {
         // Hand not tracked: freeze it, drop its trail, and it can't slice (speed 0).
@@ -644,16 +640,7 @@ export class Slice implements Game {
   private renderHud(r: Renderer): void {
     const { ctx } = r;
     const p = r.area;
-    ctx.save();
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "#f4f7ff";
-    ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
-    ctx.textAlign = "left";
-    ctx.fillText(
-      String(this.score).padStart(4, "0"),
-      p.x + r.sx(0.03),
-      p.y + r.sy(0.03)
-    );
+    beginScoreHud(r, this.score, 4);
 
     // Lives as hearts, top-right.
     ctx.textAlign = "right";

@@ -106,9 +106,9 @@ final class HandLandmarkerEstimator: @unchecked Sendable {
     // MediaPipe's 21-landmark indices (the ordering is a stable, documented MediaPipe
     // contract — same as the `HandLandmark` enum: 0 = wrist … 20 = pinky tip). We use raw
     // indices to avoid depending on the exact Swift-imported enum name.
-    private let wristIdx = 0            // WRIST
-    private let middleMCPIdx = 9        // MIDDLE_FINGER_MCP (palm-length reference)
-    private let indexTipIdx = 8         // INDEX_FINGER_TIP
+    private let wristIdx = 0  // WRIST
+    private let middleMCPIdx = 9  // MIDDLE_FINGER_MCP (palm-length reference)
+    private let indexTipIdx = 8  // INDEX_FINGER_TIP
     private let nonThumbTipIdx: [Int] = [8, 12, 16, 20]  // INDEX/MIDDLE/RING/PINKY tips
 
     // MARK: - Init
@@ -118,7 +118,9 @@ final class HandLandmarkerEstimator: @unchecked Sendable {
     /// can't initialize — so the caller degrades to Vision instead of crashing.
     init() {
         guard let modelPath = Bundle.main.path(forResource: "hand_landmarker", ofType: "task") else {
-            NSLog("[Motion] MediaPipe HandLandmarker: model 'hand_landmarker.task' not found in bundle — falling back to Vision hand path.")
+            NSLog(
+                "[Motion] MediaPipe HandLandmarker: model 'hand_landmarker.task' not found in bundle — falling back to Vision hand path."
+            )
             landmarker = nil
             return
         }
@@ -137,7 +139,9 @@ final class HandLandmarkerEstimator: @unchecked Sendable {
             landmarker = try HandLandmarker(options: options)
             NSLog("[Motion] MediaPipe HandLandmarker initialized (VIDEO mode, numHands=2).")
         } catch {
-            NSLog("[Motion] MediaPipe HandLandmarker init failed: \(error.localizedDescription) — falling back to Vision hand path.")
+            NSLog(
+                "[Motion] MediaPipe HandLandmarker init failed: \(error.localizedDescription) — falling back to Vision hand path."
+            )
             landmarker = nil
         }
     }
@@ -264,7 +268,7 @@ final class HandLandmarkerEstimator: @unchecked Sendable {
                 let dl = leftWrist.map { sqDist(h.wrist, $0) } ?? Double.greatestFiniteMagnitude
                 let dr = rightWrist.map { sqDist(h.wrist, $0) } ?? Double.greatestFiniteMagnitude
                 if dl <= dr {
-                    if left == nil || dl < left!.d { // closer left claim wins; loser tries right
+                    if left == nil || dl < left!.d {  // closer left claim wins; loser tries right
                         if let prev = left { assignFallback(prev.hand, into: &right) }
                         left = (h, dl)
                     } else {
@@ -349,12 +353,14 @@ final class HandLandmarkerEstimator: @unchecked Sendable {
     private func clamp01(_ v: Double) -> Double { min(1.0, max(0.0, v)) }
 
     private func dist(_ a: NormalizedLandmark, _ b: NormalizedLandmark) -> Double {
-        let dx = Double(a.x - b.x), dy = Double(a.y - b.y)
+        let dx = Double(a.x - b.x)
+        let dy = Double(a.y - b.y)
         return (dx * dx + dy * dy).squareRoot()
     }
 
     private func sqDist(_ a: Point2, _ b: Point2) -> Double {
-        let dx = a[0] - b[0], dy = a[1] - b[1]
+        let dx = a[0] - b[0]
+        let dy = a[1] - b[1]
         return dx * dx + dy * dy
     }
 }

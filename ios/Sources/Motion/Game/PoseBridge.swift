@@ -89,8 +89,10 @@ final class PoseBridge {
     ///   - tracking: setup verdict from `SetupEvaluator`
     ///   - hands: latest per-hand openness 0..1 (nil if never detected), carried in the packet
     ///   - fingertips: latest precise index-fingertips (nil if never detected), carried too
-    func pushLivePose(joints: Joints?, quality: Double, tracking: TrackingState,
-                      hands: HandState? = nil, fingertips: Fingertips? = nil) {
+    func pushLivePose(
+        joints: Joints?, quality: Double, tracking: TrackingState,
+        hands: HandState? = nil, fingertips: Fingertips? = nil
+    ) {
         guard let coordinator else { return }
 
         // Tracking transitions are cheap and important (they pause/resume the game), so

@@ -157,7 +157,7 @@ struct GameWebView: UIViewRepresentable {
         /// as a JSON STRING (the web bridge JSON.parses strings), which sidesteps any JS
         /// object-literal escaping concerns — we only have to escape the JSON string once.
         func pushPose(jsonString: String) {
-            guard ready else { return } // no bridge yet; poses before start are dropped
+            guard ready else { return }  // no bridge yet; poses before start are dropped
             let js = "window.__motion && window.__motion.pushPose(\(Self.jsStringLiteral(jsonString)));"
             eval(js)
         }
@@ -172,12 +172,18 @@ struct GameWebView: UIViewRepresentable {
         /// Begin / restart the game. If the web app isn't `ready` yet, this is queued and
         /// fired the moment the `ready` event arrives.
         func start() {
-            guard ready else { pendingStart = true; return }
+            guard ready else {
+                pendingStart = true
+                return
+            }
             eval("window.__motion && window.__motion.start();")
         }
 
         func stop() {
-            guard ready else { pendingStart = false; return }
+            guard ready else {
+                pendingStart = false
+                return
+            }
             eval("window.__motion && window.__motion.stop();")
         }
 
@@ -195,13 +201,15 @@ struct GameWebView: UIViewRepresentable {
         /// all handled correctly — the result is a valid JS/JSON string expression.
         static func jsStringLiteral(_ s: String) -> String {
             if let data = try? JSONSerialization.data(withJSONObject: [s], options: []),
-               let arr = String(data: data, encoding: .utf8),
-               arr.hasPrefix("["), arr.hasSuffix("]") {
+                let arr = String(data: data, encoding: .utf8),
+                arr.hasPrefix("["), arr.hasSuffix("]")
+            {
                 // arr == `["...escaped..."]`; strip the array brackets to get the literal.
                 return String(arr.dropFirst().dropLast())
             }
             // Fallback: minimal manual escaping (should never be hit for our inputs).
-            let escaped = s
+            let escaped =
+                s
                 .replacingOccurrences(of: "\\", with: "\\\\")
                 .replacingOccurrences(of: "\"", with: "\\\"")
                 .replacingOccurrences(of: "\n", with: "\\n")
@@ -210,8 +218,10 @@ struct GameWebView: UIViewRepresentable {
 
         // MARK: Web → native (WKScriptMessageHandler)
 
-        func userContentController(_ userContentController: WKUserContentController,
-                                   didReceive message: WKScriptMessage) {
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
             guard message.name == "motion" else { return }
             guard let event = Self.decodeEvent(message.body) else { return }
             if case .ready = event { ready = true }
@@ -221,11 +231,12 @@ struct GameWebView: UIViewRepresentable {
         /// Decode a `{ event: ..., ... }` message body (a JS object → NSDictionary).
         private static func decodeEvent(_ body: Any) -> GameEvent? {
             guard let dict = body as? [String: Any],
-                  let event = dict["event"] as? String else { return nil }
+                let event = dict["event"] as? String
+            else { return nil }
             switch event {
-            case "ready":     return .ready
+            case "ready": return .ready
             case "gameStart": return .gameStart
-            case "restart":   return .restart
+            case "restart": return .restart
             case "score":
                 let value = (dict["value"] as? NSNumber)?.doubleValue ?? 0
                 return .score(value)
@@ -233,9 +244,10 @@ struct GameWebView: UIViewRepresentable {
                 // `result` is arbitrary JSON; re-serialize it to a string for the UI.
                 var resultJSON: String?
                 if let result = dict["result"],
-                   JSONSerialization.isValidJSONObject(result),
-                   let data = try? JSONSerialization.data(withJSONObject: result),
-                   let str = String(data: data, encoding: .utf8) {
+                    JSONSerialization.isValidJSONObject(result),
+                    let data = try? JSONSerialization.data(withJSONObject: result),
+                    let str = String(data: data, encoding: .utf8)
+                {
                     resultJSON = str
                 }
                 return .gameOver(resultJSON: resultJSON)
@@ -246,8 +258,10 @@ struct GameWebView: UIViewRepresentable {
 
         // MARK: Navigation
 
-        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
-                     withError error: Error) {
+        func webView(
+            _ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
             // Surfaced as a black screen; the ContentView shows a dev-server hint on failure.
             onEvent(.gameOver(resultJSON: nil))
         }

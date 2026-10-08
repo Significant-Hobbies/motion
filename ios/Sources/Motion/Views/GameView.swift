@@ -52,7 +52,7 @@ struct GameView: View {
                 }
                 Spacer()
             }
-            .padding(.top, 88)   // clear the top control bar
+            .padding(.top, 88)  // clear the top control bar
             .padding(.trailing, 16)
 
             // 3. Top control bar: exit + record toggle + status.
@@ -131,7 +131,9 @@ struct GameView: View {
 
             // Saved-clip quick open (after a game).
             if case .saved = model.recorder.state, let url = model.recorder.lastSavedURL {
-                Button { shareURL = url } label: {
+                Button {
+                    shareURL = url
+                } label: {
                     Label("Video", systemImage: "play.rectangle.fill")
                         .font(.caption.bold())
                         .foregroundStyle(.white)

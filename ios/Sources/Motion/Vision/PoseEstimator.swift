@@ -157,9 +157,10 @@ final class PoseEstimator: @unchecked Sendable {
             let now = ProcessInfo.processInfo.systemUptime
             guard now - self.lastEmit >= self.minEmitInterval else { return }
 
-            let handler = VNImageRequestHandler(cvPixelBuffer: pixelBuffer,
-                                                orientation: orientation,
-                                                options: [:])
+            let handler = VNImageRequestHandler(
+                cvPixelBuffer: pixelBuffer,
+                orientation: orientation,
+                options: [:])
 
             // ── PASS 1: BODY (full frame) ────────────────────────────────────────────────
             // We need the wrist positions before we can build the per-hand ROIs, so the body
@@ -182,8 +183,9 @@ final class PoseEstimator: @unchecked Sendable {
             self.lastEmit = now
             // Pass the pixel buffer + frame time through so the MediaPipe hand path can run on
             // the SAME frame (VIDEO mode needs a monotonic ms timestamp; `now` is our clock).
-            self.buildAndEmit(from: points, handler: handler,
-                              pixelBuffer: pixelBuffer, timestampSeconds: now)
+            self.buildAndEmit(
+                from: points, handler: handler,
+                pixelBuffer: pixelBuffer, timestampSeconds: now)
         }
     }
 
@@ -191,16 +193,18 @@ final class PoseEstimator: @unchecked Sendable {
 
     /// Map Vision's recognized points to the 8 protocol joints, applying coordinate
     /// flip, left/right swap, smoothing, and confidence thresholding.
-    private func buildAndEmit(from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint],
-                              handler: VNImageRequestHandler,
-                              pixelBuffer: CVPixelBuffer,
-                              timestampSeconds: TimeInterval) {
+    private func buildAndEmit(
+        from points: [VNHumanBodyPoseObservation.JointName: VNRecognizedPoint],
+        handler: VNImageRequestHandler,
+        pixelBuffer: CVPixelBuffer,
+        timestampSeconds: TimeInterval
+    ) {
         // Pull a Vision point if it clears the confidence threshold, converting to
         // top-left origin. x is kept as-is (buffer already mirrored); y is flipped.
         func pt(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
             guard let p = points[name], p.confidence >= confidenceThreshold else { return nil }
-            let x = Double(p.location.x)              // already mirror-space
-            let y = 1.0 - Double(p.location.y)        // bottom-left → top-left
+            let x = Double(p.location.x)  // already mirror-space
+            let y = 1.0 - Double(p.location.y)  // bottom-left → top-left
             return ([x, y], Double(p.confidence))
         }
 
@@ -228,22 +232,23 @@ final class PoseEstimator: @unchecked Sendable {
         // HANDS: wrists. SWAP because the mirrored buffer flips visual sides —
         // Vision's LEFT wrist is the player's RIGHT hand, and vice-versa.
         raw[.rightHand] = pt(.leftWrist)
-        raw[.leftHand]  = pt(.rightWrist)
+        raw[.leftHand] = pt(.rightWrist)
 
         // TORSO: Vision's `.root` is the pelvis/hip center. Fall back to the midpoint
         // of the shoulders if root is missing, then to the midpoint of the hips.
-        raw[.torso] = pt(.root)
+        raw[.torso] =
+            pt(.root)
             ?? mid(pt(.leftShoulder), pt(.rightShoulder))
             ?? mid(pt(.leftHip), pt(.rightHip))
 
         // KNEES (swapped, same reason as hands).
         raw[.rightKnee] = pt(.leftKnee)
-        raw[.leftKnee]  = pt(.rightKnee)
+        raw[.leftKnee] = pt(.rightKnee)
 
         // FEET: ankles are the lowest reliable body-pose joint (no toe joint in the
         // 2D body model), so ankle == foot. (Swapped.)
         raw[.rightFoot] = pt(.leftAnkle)
-        raw[.leftFoot]  = pt(.rightAnkle)
+        raw[.leftFoot] = pt(.rightAnkle)
 
         // ARM CHAIN (shoulders + elbows) — OPTIONAL. SWAPPED exactly like hands/knees/feet
         // above: the mirrored buffer flips visual sides, so Vision's LEFT is the player's
@@ -251,12 +256,15 @@ final class PoseEstimator: @unchecked Sendable {
         // stay absent here, so the packet omits them rather than sending garbage.
         var rawArms: [ArmJointName: (Point2, Double)] = [:]
         rawArms[.rightShoulder] = ptArm(.leftShoulder)
-        rawArms[.leftShoulder]  = ptArm(.rightShoulder)
-        rawArms[.rightElbow]    = ptArm(.leftElbow)
-        rawArms[.leftElbow]     = ptArm(.rightElbow)
+        rawArms[.leftShoulder] = ptArm(.rightShoulder)
+        rawArms[.rightElbow] = ptArm(.leftElbow)
+        rawArms[.leftElbow] = ptArm(.rightElbow)
 
         // Nothing usable this frame.
-        guard !raw.isEmpty else { emitLost(); return }
+        guard !raw.isEmpty else {
+            emitLost()
+            return
+        }
 
         // Exponential smoothing per joint. A joint that was absent adopts the new
         // value directly; a joint absent this frame keeps its previous smoothed value
@@ -283,7 +291,9 @@ final class PoseEstimator: @unchecked Sendable {
             }
         }
 
-        let quality = confidences.values.isEmpty ? 0
+        let quality =
+            confidences.values.isEmpty
+            ? 0
             : confidences.values.reduce(0, +) / Double(JointName.allCases.count)
 
         // Arm-chain smoothing — same exponential filter (`a`) as the required joints above.
@@ -327,8 +337,9 @@ final class PoseEstimator: @unchecked Sendable {
             timestampSeconds: timestampSeconds
         )
 
-        let frame = PoseFrame(joints: outJoints, armJoints: outArms, quality: quality,
-                              confidences: confidences, hands: hands, fingertips: fingertips)
+        let frame = PoseFrame(
+            joints: outJoints, armJoints: outArms, quality: quality,
+            confidences: confidences, hands: hands, fingertips: fingertips)
         Task { @MainActor in self.delegate?.poseEstimator(self, didProduce: frame) }
     }
 
@@ -402,10 +413,12 @@ final class PoseEstimator: @unchecked Sendable {
 
         // Resolve each side's single observation, preferring the ROI result and falling back
         // to the nearest full-frame observation by wrist when the ROI side was absent.
-        let leftObs: VNHumanHandPoseObservation? = haveLeft
+        let leftObs: VNHumanHandPoseObservation? =
+            haveLeft
             ? leftHandRequest.results?.first
             : nearestFallbackObservation(toTopLeftWrist: leftWrist)
-        let rightObs: VNHumanHandPoseObservation? = haveRight
+        let rightObs: VNHumanHandPoseObservation? =
+            haveRight
             ? rightHandRequest.results?.first
             : nearestFallbackObservation(toTopLeftWrist: rightWrist)
 
@@ -419,15 +432,18 @@ final class PoseEstimator: @unchecked Sendable {
         // full-frame request, its ROI is the full frame (identity remap).
         let leftROI = haveLeft ? leftHandRequest.regionOfInterest : fullFrameROI
         let rightROI = haveRight ? rightHandRequest.regionOfInterest : fullFrameROI
-        let leftReading = handEstimator.analyzeSide(observation: leftObs, side: .left,
-                                                    mapPoint: { self.mapRecognizedPoint($0, roi: leftROI) })
-        let rightReading = handEstimator.analyzeSide(observation: rightObs, side: .right,
-                                                     mapPoint: { self.mapRecognizedPoint($0, roi: rightROI) })
+        let leftReading = handEstimator.analyzeSide(
+            observation: leftObs, side: .left,
+            mapPoint: { self.mapRecognizedPoint($0, roi: leftROI) })
+        let rightReading = handEstimator.analyzeSide(
+            observation: rightObs, side: .right,
+            mapPoint: { self.mapRecognizedPoint($0, roi: rightROI) })
 
         let hands = HandState(left: leftReading.openness, right: rightReading.openness)
 
         // Fingertips: omit the whole field only when BOTH sides are nil.
-        let fingertips: Fingertips? = (leftReading.indexTip == nil && rightReading.indexTip == nil)
+        let fingertips: Fingertips? =
+            (leftReading.indexTip == nil && rightReading.indexTip == nil)
             ? nil
             : Fingertips(left: leftReading.indexTip, right: rightReading.indexTip)
 
@@ -437,7 +453,8 @@ final class PoseEstimator: @unchecked Sendable {
     /// Pick the full-frame (fallback) hand observation whose wrist is nearest the given
     /// body wrist (top-left space). Used only for a side that had no ROI observation.
     private func nearestFallbackObservation(toTopLeftWrist wrist: Point2?)
-        -> VNHumanHandPoseObservation? {
+        -> VNHumanHandPoseObservation?
+    {
         let candidates = fallbackHandRequest.results ?? []
         guard !candidates.isEmpty else { return nil }
         guard let wrist, wrist.count == 2 else { return candidates.first }
@@ -452,9 +469,13 @@ final class PoseEstimator: @unchecked Sendable {
             // Map the fallback wrist into the same top-left/mirror frame for a fair compare.
             // Fallback observations are full-image, so use the full-frame (identity) ROI.
             let mapped = mapRecognizedPoint(w, roi: fullFrameROI)
-            let dx = mapped[0] - Double(target.x), dy = mapped[1] - Double(target.y)
+            let dx = mapped[0] - Double(target.x)
+            let dy = mapped[1] - Double(target.y)
             let d = dx * dx + dy * dy
-            if d < bestDist { bestDist = d; best = obs }
+            if d < bestDist {
+                bestDist = d
+                best = obs
+            }
         }
         return best ?? candidates.first
     }
@@ -474,8 +495,8 @@ final class PoseEstimator: @unchecked Sendable {
     ///     [0,1] (Vision REJECTS an ROI that exceeds the image — that would throw in
     ///     `perform` and we'd lose the hand).
     private func roi(aroundTopLeftWrist wrist: Point2) -> CGRect {
-        let cx = CGFloat(wrist[0])                 // mirror-space x, same as Vision
-        let cy = 1.0 - CGFloat(wrist[1])           // top-left y → Vision bottom-left y
+        let cx = CGFloat(wrist[0])  // mirror-space x, same as Vision
+        let cy = 1.0 - CGFloat(wrist[1])  // top-left y → Vision bottom-left y
         let half = roiSize / 2
         // Clamp the CENTER so a full-size box fits, then place the box. This keeps the box
         // exactly `roiSize` wide (rather than shrinking it) while staying inside [0,1].
@@ -506,9 +527,9 @@ final class PoseEstimator: @unchecked Sendable {
         // full-image space using the ROI rect (Vision bottom-left), then flip to top-left.
         // For the full-frame fallback (roi = 0,0,1,1) this is an identity — so both the
         // ROI-zoomed and fallback paths use the exact same helper.
-        let fullX = Double(roi.minX + point.location.x * roi.width)   // full-image, mirror-space
+        let fullX = Double(roi.minX + point.location.x * roi.width)  // full-image, mirror-space
         let fullYBottomLeft = Double(roi.minY + point.location.y * roi.height)
-        return [fullX, 1.0 - fullYBottomLeft]                        // bottom-left → top-left
+        return [fullX, 1.0 - fullYBottomLeft]  // bottom-left → top-left
     }
 
     /// The full-frame ROI — used for fallback (full-image) observations, where the

@@ -103,7 +103,7 @@ final class ClipReceiver {
             } else if meta.chunks > 1 {
                 chunkSize = (meta.totalBytes - slice.count) / (meta.chunks - 1)
             } else {
-                chunkSize = max(slice.count, meta.totalBytes) // single-chunk clip
+                chunkSize = max(slice.count, meta.totalBytes)  // single-chunk clip
             }
         }
         guard let stride = chunkSize, stride > 0 else { return nil }
