@@ -20,7 +20,7 @@ import type {
   GameResult,
   Renderer,
 } from "../../sdk";
-import { roundRect } from "../canvas-utils";
+import { beginScoreHud, roundRect } from "../canvas-utils";
 
 const SESSION_MS = 75_000; // ~75s
 const TARGET_RADIUS = 0.075; // normalized (x-relative)
@@ -326,18 +326,7 @@ export class ReachDodge implements Game {
   private renderHud(r: Renderer): void {
     const { ctx } = r;
     const p = r.area;
-    ctx.save();
-    ctx.textBaseline = "top";
-
-    // Score
-    ctx.fillStyle = "#f4f7ff";
-    ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
-    ctx.textAlign = "left";
-    ctx.fillText(
-      String(this.score).padStart(5, "0"),
-      p.x + r.sx(0.03),
-      p.y + r.sy(0.03)
-    );
+    beginScoreHud(r, this.score, 5);
 
     // Combo
     if (this.combo > 1) {

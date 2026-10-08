@@ -1,5 +1,7 @@
 // Shared canvas drawing helpers used by multiple games.
-// Extracted to avoid duplication of geometry and path utilities.
+// Extracted to avoid duplication of geometry, path, HUD and hand-input utilities.
+
+import type { BodyController, Renderer } from "../sdk";
 
 /** Shortest distance from point (px,py) to the segment (ax,ay)–(bx,by). */
 export function distPointToSegment(
@@ -36,4 +38,35 @@ export function roundRect(
   ctx.arcTo(x, y + h, x, y, rr);
   ctx.arcTo(x, y, x + w, y, rr);
   ctx.closePath();
+}
+
+/** Normalized position of the tracked HAND joint for `which` (the grab/blade point). */
+export function handJoint(
+  body: BodyController,
+  which: "left" | "right"
+): readonly [number, number] {
+  return which === "left" ? body.joints.leftHand : body.joints.rightHand;
+}
+
+/**
+ * Open the HUD layer (`ctx.save()`, top baseline) and draw the zero-padded score in
+ * the play area's top-left corner. The caller draws the rest and calls `ctx.restore()`.
+ */
+export function beginScoreHud(
+  r: Renderer,
+  score: number,
+  digits: number
+): void {
+  const { ctx } = r;
+  const p = r.area;
+  ctx.save();
+  ctx.textBaseline = "top";
+  ctx.fillStyle = "#f4f7ff";
+  ctx.font = `bold ${Math.round(r.sx(0.05))}px system-ui`;
+  ctx.textAlign = "left";
+  ctx.fillText(
+    String(score).padStart(digits, "0"),
+    p.x + r.sx(0.03),
+    p.y + r.sy(0.03)
+  );
 }
