@@ -32,12 +32,12 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
-    "@vitest/coverage-v8": "4.1.10",
+    "@vitest/coverage-v8": "4.1.11",
     "concurrently": "^9.1.0",
     "jscpd": "5.0.14",
     "knip": "6.32.2",
     "ultracite": "7.10.2",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   },
   "packageManager": "pnpm@10.33.2",
   "engines": {
@@ -47,7 +47,12 @@
     "overrides": {
       "brace-expansion@>=5.0.0 <6.0.0": "5.0.12",
       "nanoid@>=3.0.0 <4.0.0": "3.3.18",
-      "miniflare>undici": "6.29.0"
+      "miniflare>undici": "6.29.0",
+      "concurrently>shell-quote": "1.11.0",
+      "magicast>source-map-js": "1.2.2",
+      "postcss>source-map-js": "1.2.2",
+      "vite>postcss": "8.5.23",
+      "knip>smol-toml": "1.9.0"
     },
     "patchedDependencies": {
       "partykit@0.0.115": "patches/partykit@0.0.115.patch"
