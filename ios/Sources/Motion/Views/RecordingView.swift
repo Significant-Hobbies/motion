@@ -35,10 +35,13 @@ struct RecordingView: View {
                     .font(.subheadline.bold())
                     .foregroundStyle(.white)
                 Spacer()
-                Toggle("", isOn: Binding(
-                    get: { rec.isArmed },
-                    set: { _ in rec.toggle() }
-                ))
+                Toggle(
+                    "",
+                    isOn: Binding(
+                        get: { rec.isArmed },
+                        set: { _ in rec.toggle() }
+                    )
+                )
                 .labelsHidden()
                 .tint(.red)
             }

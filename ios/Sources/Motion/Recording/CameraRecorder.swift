@@ -68,13 +68,16 @@ final class CameraRecorder: NSObject, CameraSampleBufferTap, @unchecked Sendable
     private let stateLock = NSLock()
     private var _isRecording = false
     private var isRecording: Bool {
-        stateLock.lock(); defer { stateLock.unlock() }
+        stateLock.lock()
+        defer { stateLock.unlock() }
         return _isRecording
     }
     /// Synchronous setter for the recording flag. Kept as a non-async method so it can
     /// be called from `async` contexts (Swift 6 forbids `NSLock.lock()` directly there).
     private func setRecording(_ value: Bool) {
-        stateLock.lock(); _isRecording = value; stateLock.unlock()
+        stateLock.lock()
+        _isRecording = value
+        stateLock.unlock()
     }
 
     /// The video dimensions we configure the writer for. Front camera at 720p portrait
@@ -137,12 +140,13 @@ final class CameraRecorder: NSObject, CameraSampleBufferTap, @unchecked Sendable
                     let first = self.firstPTS.seconds
                     let last = self.lastPTS.seconds
                     let duration = max(0, last - first)
-                    cont.resume(returning: CameraRecording(
-                        url: url,
-                        firstFrameWallClockMs: self.firstFrameWallClockMs,
-                        firstFramePTSSeconds: first,
-                        durationSeconds: duration
-                    ))
+                    cont.resume(
+                        returning: CameraRecording(
+                            url: url,
+                            firstFrameWallClockMs: self.firstFrameWallClockMs,
+                            firstFramePTSSeconds: first,
+                            durationSeconds: duration
+                        ))
                 }
             }
         }

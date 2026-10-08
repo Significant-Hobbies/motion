@@ -134,7 +134,8 @@ final class HandPoseEstimator: @unchecked Sendable {
         mapPoint: (VNRecognizedPoint) -> Point2
     ) -> (openness: Double, indexTip: Point2?) {
         if observation != nil { hasEverSeenHand = true }
-        let reading = observation.map { measure(observation: $0, mapPoint: mapPoint) }
+        let reading =
+            observation.map { measure(observation: $0, mapPoint: mapPoint) }
             ?? HandSideReading(openness: nil, indexTip: nil)
 
         switch side {
@@ -224,7 +225,7 @@ final class HandPoseEstimator: @unchecked Sendable {
             return next
         }
         // Not detected this frame.
-        guard let prev = previous else { return 1.0 } // never seen → open, never grabs
+        guard let prev = previous else { return 1.0 }  // never seen → open, never grabs
         // Decay the held value toward neutral so a lost hand relaxes instead of sticking.
         let next = prev + (neutralOpenness - prev) * 0.1
         previous = next

@@ -14,8 +14,9 @@
 //
 
 import SwiftUI
+
 #if canImport(UIKit)
-import UIKit
+    import UIKit
 #endif
 
 struct ContentView: View {
@@ -42,8 +43,10 @@ struct ContentView: View {
         // scene's `interfaceOrientation` (authoritative + already de-noised, unlike raw
         // device motion which reports face-up/down) and refresh it on every orientation
         // change notification. This also drives the initial mode on first appearance.
-        .onReceive(NotificationCenter.default.publisher(
-            for: UIDevice.orientationDidChangeNotification)) { _ in
+        .onReceive(
+            NotificationCenter.default.publisher(
+                for: UIDevice.orientationDidChangeNotification)
+        ) { _ in
             refreshOrientation()
         }
         .task {
@@ -68,7 +71,8 @@ struct ContentView: View {
     /// Resolve the current interface orientation from the active window scene and push
     /// landscape-ness into the model. Falls back to portrait when no scene is available.
     private func refreshOrientation() {
-        let scene = UIApplication.shared.connectedScenes
+        let scene =
+            UIApplication.shared.connectedScenes
             .compactMap { $0 as? UIWindowScene }
             .first { $0.activationState == .foregroundActive }
             ?? UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first

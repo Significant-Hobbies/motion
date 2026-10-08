@@ -47,12 +47,12 @@ enum Role: String, Codable, Sendable {
 /// Reason the controller has paused sending usable input. Mirrors `TrackingState`.
 enum TrackingState: String, Codable, Sendable, CaseIterable {
     case ok
-    case lost          // body not detected / confidence collapsed
-    case partial       // some required joints missing
-    case tooClose      = "too_close"
-    case tooFar        = "too_far"
-    case raisePhone    = "raise_phone"
-    case lowLight      = "low_light"
+    case lost  // body not detected / confidence collapsed
+    case partial  // some required joints missing
+    case tooClose = "too_close"
+    case tooFar = "too_far"
+    case raisePhone = "raise_phone"
+    case lowLight = "low_light"
 }
 
 // MARK: - Joints
@@ -173,8 +173,10 @@ struct PosePacket: Codable, Sendable {
     /// the TS optional field `fingertips?: Fingertips` so old/new relays both accept the packet.
     let fingertips: Fingertips?
 
-    init(seq: Int, sentAt: Double, quality: Double, joints: Joints,
-         hands: HandState? = nil, fingertips: Fingertips? = nil) {
+    init(
+        seq: Int, sentAt: Double, quality: Double, joints: Joints,
+        hands: HandState? = nil, fingertips: Fingertips? = nil
+    ) {
         self.v = PROTOCOL_VERSION
         self.type = "pose"
         self.seq = seq
@@ -209,7 +211,7 @@ struct CalibMessage: Codable, Sendable {
     let v: Int
     let type: String
     let stage: Stage
-    let progress: Double // 0..1 within the whole calibration
+    let progress: Double  // 0..1 within the whole calibration
 
     init(stage: Stage, progress: Double) {
         self.v = PROTOCOL_VERSION
@@ -294,10 +296,10 @@ struct RecMetaMessage: Codable, Sendable {
     let v: Int
     let type: String
     let sessionId: String
-    let mime: String          // e.g. "video/webm;codecs=vp9" or "video/mp4"
+    let mime: String  // e.g. "video/webm;codecs=vp9" or "video/mp4"
     let totalBytes: Int
-    let chunks: Int           // number of RecChunkMessages to expect
-    let durationMs: Double    // gameplay clip duration
+    let chunks: Int  // number of RecChunkMessages to expect
+    let durationMs: Double  // gameplay clip duration
     /// ms from the session anchor to the first recorded gameplay frame (for sync).
     let startOffsetMs: Double
 }
@@ -308,8 +310,8 @@ struct RecChunkMessage: Codable, Sendable {
     let v: Int
     let type: String
     let sessionId: String
-    let i: Int                // 0-based chunk index
-    let data: String          // base64 of this slice
+    let i: Int  // 0-based chunk index
+    let data: String  // base64 of this slice
 }
 
 // MARK: - Inbound messages (server → controller)
@@ -331,9 +333,9 @@ struct StartMessage: Codable, Sendable {
 /// Room-level errors (e.g. a second controller tried to join).
 struct ErrorMessage: Codable, Sendable {
     enum Code: String, Codable, Sendable {
-        case roomFull        = "room_full"
-        case badRole         = "bad_role"
-        case badMessage      = "bad_message"
+        case roomFull = "room_full"
+        case badRole = "bad_role"
+        case badMessage = "bad_message"
         case versionMismatch = "version_mismatch"
     }
     let v: Int

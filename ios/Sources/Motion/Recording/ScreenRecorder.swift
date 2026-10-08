@@ -44,7 +44,6 @@
 import AVFoundation
 import Foundation
 import Observation
-import Photos
 import ReplayKit
 
 @MainActor
@@ -53,12 +52,12 @@ final class ScreenRecorder {
 
     /// Coarse state surfaced to the UI.
     enum State: Sendable, Equatable {
-        case idle           // not recording; not armed
-        case armed          // user opted in; waiting for the game to start
-        case recording      // ReplayKit capture running, writing to the mp4
-        case saving         // capture stopped; finalizing + saving to Photos
-        case saved          // saved to Photos
-        case failed(String) // something went wrong (message for the UI)
+        case idle  // not recording; not armed
+        case armed  // user opted in; waiting for the game to start
+        case recording  // ReplayKit capture running, writing to the mp4
+        case saving  // capture stopped; finalizing + saving to Photos
+        case saved  // saved to Photos
+        case failed(String)  // something went wrong (message for the UI)
     }
 
     private(set) var state: State = .idle
@@ -198,29 +197,13 @@ final class ScreenRecorder {
 
     /// Save a finished mp4 to Photos (add-only authorization).
     private func save(url: URL) async {
-        let status = await requestPhotosAddPermission()
-        guard status == .authorized || status == .limited else {
-            state = .failed("Photos access denied — enable it in Settings to save your clip.")
-            return
-        }
-        do {
-            try await PHPhotoLibrary.shared().performChanges {
-                let req = PHAssetCreationRequest.forAsset()
-                req.addResource(with: .video, fileURL: url, options: nil)
-            }
+        switch await PhotosVideoSaver.save(url: url) {
+        case .saved:
             lastSavedURL = url
             state = .saved
-        } catch {
-            state = .failed("Couldn't save to Photos: \(error.localizedDescription)")
+        case .failed(let message):
+            state = .failed(message)
         }
-    }
-
-    private func requestPhotosAddPermission() async -> PHAuthorizationStatus {
-        let current = PHPhotoLibrary.authorizationStatus(for: .addOnly)
-        if current == .notDetermined {
-            return await PHPhotoLibrary.requestAuthorization(for: .addOnly)
-        }
-        return current
     }
 
     // GitHub issue #20 tracks physical-device verification that ReplayKit includes both
@@ -265,13 +248,14 @@ private final class ScreenWriter: @unchecked Sendable {
                 guard self.buildWriter(width: width, height: height) else { return }
             }
             guard let writer = self.writer, let input = self.videoInput,
-                  writer.status != .failed else { return }
+                writer.status != .failed
+            else { return }
 
             if !self.sessionStarted {
                 writer.startSession(atSourceTime: pts)
                 self.sessionStarted = true
             }
-            guard input.isReadyForMoreMediaData else { return } // drop rather than block
+            guard input.isReadyForMoreMediaData else { return }  // drop rather than block
             input.append(retained)
         }
     }
@@ -282,7 +266,8 @@ private final class ScreenWriter: @unchecked Sendable {
         await withCheckedContinuation { (cont: CheckedContinuation<URL?, Never>) in
             queue.async { [weak self] in
                 guard let self, let writer = self.writer, let input = self.videoInput,
-                      self.sessionStarted, writer.status == .writing else {
+                    self.sessionStarted, writer.status == .writing
+                else {
                     cont.resume(returning: nil)
                     return
                 }
