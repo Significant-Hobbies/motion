@@ -199,66 +199,10 @@ final class PoseEstimator: @unchecked Sendable {
         pixelBuffer: CVPixelBuffer,
         timestampSeconds: TimeInterval
     ) {
-        // Pull a Vision point if it clears the confidence threshold, converting to
-        // top-left origin. x is kept as-is (buffer already mirrored); y is flipped.
-        func pt(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
-            guard let p = points[name], p.confidence >= confidenceThreshold else { return nil }
-            let x = Double(p.location.x)  // already mirror-space
-            let y = 1.0 - Double(p.location.y)  // bottom-left → top-left
-            return ([x, y], Double(p.confidence))
-        }
-
-        // Same conversion as `pt`, but gated at the looser `armConfidenceThreshold` — used
-        // ONLY for the optional arm-chain (shoulders + elbows) so they survive to draw a
-        // bent arm even when Vision is only ~0.15 confident about the elbow.
-        func ptArm(_ name: VNHumanBodyPoseObservation.JointName) -> (Point2, Double)? {
-            guard let p = points[name], p.confidence >= armConfidenceThreshold else { return nil }
-            let x = Double(p.location.x)
-            let y = 1.0 - Double(p.location.y)
-            return ([x, y], Double(p.confidence))
-        }
-
-        /// Midpoint of two optional points (needs both). Confidence = min of the two.
-        func mid(_ a: (Point2, Double)?, _ b: (Point2, Double)?) -> (Point2, Double)? {
-            guard let a, let b else { return nil }
-            return ([(a.0[0] + b.0[0]) / 2, (a.0[1] + b.0[1]) / 2], min(a.1, b.1))
-        }
-
-        var raw: [JointName: (Point2, Double)] = [:]
-
-        // HEAD: prefer the nose; fall back to neck if the face is turned/occluded.
-        raw[.head] = pt(.nose) ?? pt(.neck)
-
-        // HANDS: wrists. SWAP because the mirrored buffer flips visual sides —
-        // Vision's LEFT wrist is the player's RIGHT hand, and vice-versa.
-        raw[.rightHand] = pt(.leftWrist)
-        raw[.leftHand] = pt(.rightWrist)
-
-        // TORSO: Vision's `.root` is the pelvis/hip center. Fall back to the midpoint
-        // of the shoulders if root is missing, then to the midpoint of the hips.
-        raw[.torso] =
-            pt(.root)
-            ?? mid(pt(.leftShoulder), pt(.rightShoulder))
-            ?? mid(pt(.leftHip), pt(.rightHip))
-
-        // KNEES (swapped, same reason as hands).
-        raw[.rightKnee] = pt(.leftKnee)
-        raw[.leftKnee] = pt(.rightKnee)
-
-        // FEET: ankles are the lowest reliable body-pose joint (no toe joint in the
-        // 2D body model), so ankle == foot. (Swapped.)
-        raw[.rightFoot] = pt(.leftAnkle)
-        raw[.leftFoot] = pt(.rightAnkle)
-
-        // ARM CHAIN (shoulders + elbows) — OPTIONAL. SWAPPED exactly like hands/knees/feet
-        // above: the mirrored buffer flips visual sides, so Vision's LEFT is the player's
-        // RIGHT. Same y-flip and confidence threshold (via `pt`). Below-threshold joints
-        // stay absent here, so the packet omits them rather than sending garbage.
-        var rawArms: [ArmJointName: (Point2, Double)] = [:]
-        rawArms[.rightShoulder] = ptArm(.leftShoulder)
-        rawArms[.leftShoulder] = ptArm(.rightShoulder)
-        rawArms[.rightElbow] = ptArm(.leftElbow)
-        rawArms[.leftElbow] = ptArm(.rightElbow)
+        // Required joints gate at `confidenceThreshold`; the cosmetic arm chain (shoulders +
+        // elbows) at the looser `armConfidenceThreshold` so a bent arm survives a ~0.15 elbow.
+        let raw = PoseMath.bodyJoints { self.reading(points[$0], threshold: self.confidenceThreshold) }
+        let rawArms = PoseMath.armJoints { self.reading(points[$0], threshold: self.armConfidenceThreshold) }
 
         // Nothing usable this frame.
         guard !raw.isEmpty else {
@@ -266,188 +210,128 @@ final class PoseEstimator: @unchecked Sendable {
             return
         }
 
-        // Exponential smoothing per joint. A joint that was absent adopts the new
-        // value directly; a joint absent this frame keeps its previous smoothed value
-        // so brief dropouts don't jitter the overlay.
-        var outJoints: [JointName: Point2] = [:]
-        var confidences: [JointName: Double] = [:]
-        let a = smoothing
-        for name in JointName.allCases {
-            if let (p, conf) = raw[name] {
-                if let prev = smoothed[name] {
-                    let sx = a * p[0] + (1 - a) * prev[0]
-                    let sy = a * p[1] + (1 - a) * prev[1]
-                    outJoints[name] = [sx, sy]
-                    smoothed[name] = [sx, sy]
-                } else {
-                    outJoints[name] = p
-                    smoothed[name] = p
-                }
-                confidences[name] = conf
-            } else if let prev = smoothed[name] {
-                // Missing this frame: reuse last known position, mark low confidence.
-                outJoints[name] = prev
-                confidences[name] = 0
-            }
-        }
-
-        let quality =
-            confidences.values.isEmpty
-            ? 0
-            : confidences.values.reduce(0, +) / Double(JointName.allCases.count)
-
-        // Arm-chain smoothing — same exponential filter (`a`) as the required joints above.
-        // A joint present this frame is smoothed against its previous value (or adopts the
-        // new value if fresh); a joint absent this frame reuses its last smoothed value so a
-        // brief dropout doesn't make the arm snap. A joint never seen stays absent (omitted).
-        var outArms: [ArmJointName: Point2] = [:]
-        for name in ArmJointName.allCases {
-            if let (p, _) = rawArms[name] {
-                if let prev = smoothedArms[name] {
-                    let sx = a * p[0] + (1 - a) * prev[0]
-                    let sy = a * p[1] + (1 - a) * prev[1]
-                    outArms[name] = [sx, sy]
-                    smoothedArms[name] = [sx, sy]
-                } else {
-                    outArms[name] = p
-                    smoothedArms[name] = p
-                }
-            } else if let prev = smoothedArms[name] {
-                // Missing this frame: reuse last known position (kept in sync with the
-                // required-joint dropout behavior above). Not fabricated from nothing.
-                outArms[name] = prev
-            }
-            // else: never detected → leave absent so the packet omits this arm joint.
-        }
+        // Exponential smoothing per joint; a brief dropout keeps the last smoothed value so
+        // the overlay doesn't jitter and the arm doesn't snap.
+        let body = PoseMath.smooth(raw, previous: &smoothed, alpha: smoothing)
+        let arms = PoseMath.smooth(rawArms, previous: &smoothedArms, alpha: smoothing)
 
         // ── PASS 2: ROI-ZOOMED HANDS ─────────────────────────────────────────────────────
-        // For EACH player hand, run a hand-pose request cropped to a small ROI around that
-        // wrist so Vision zooms the hand and returns precise landmarks. The ROI is centered
-        // on the smoothed, mirror-corrected wrist we just computed (`outJoints[.leftHand]` /
-        // `[.rightHand]`), and because each request is tied to a specific side, left/right is
-        // deterministic. A side whose wrist is missing/low-confidence this frame falls back to
-        // the full-frame request so the hand isn't lost.
-        let (hands, fingertips) = self.computeHands(
-            leftWrist: outJoints[.leftHand],
-            leftWristConf: confidences[.leftHand],
-            rightWrist: outJoints[.rightHand],
-            rightWristConf: confidences[.rightHand],
-            handler: handler,
-            pixelBuffer: pixelBuffer,
-            timestampSeconds: timestampSeconds
-        )
+        // The ROI is centered on the smoothed, mirror-corrected wrist just computed, and each
+        // request is tied to a specific side, so left/right is deterministic. A side whose
+        // wrist is missing/low-confidence this frame falls back to the full-frame request.
+        let wrists = WristReadings(
+            left: body.points[.leftHand], leftConfidence: body.confidences[.leftHand],
+            right: body.points[.rightHand], rightConfidence: body.confidences[.rightHand])
+        let (hands, fingertips) = computeHands(
+            wrists: wrists, handler: handler,
+            pixelBuffer: pixelBuffer, timestampSeconds: timestampSeconds)
 
         let frame = PoseFrame(
-            joints: outJoints, armJoints: outArms, quality: quality,
-            confidences: confidences, hands: hands, fingertips: fingertips)
+            joints: body.points, armJoints: arms.points, quality: PoseMath.quality(body.confidences),
+            confidences: body.confidences, hands: hands, fingertips: fingertips)
         Task { @MainActor in self.delegate?.poseEstimator(self, didProduce: frame) }
+    }
+
+    /// A Vision point if it clears `threshold`, converted to top-left origin. x is kept as-is
+    /// (buffer already mirrored); y is flipped.
+    private func reading(_ point: VNRecognizedPoint?, threshold: Float) -> PoseReading? {
+        guard let point, point.confidence >= threshold else { return nil }
+        let location = PoseMath.topLeft(x: Double(point.location.x), y: Double(point.location.y))
+        return (location, Double(point.confidence))
     }
 
     // MARK: - ROI-zoomed hands (pass 2)
 
-    /// Run the per-wrist ROI hand requests, plus a full-frame fallback when a wrist is
-    /// missing, and turn the results into openness (`HandState`) + index fingertips
-    /// (`Fingertips`). Returns `nil` for a field when there is nothing meaningful to send.
+    /// Turn the frame's hands into openness (`HandState`) + index fingertips (`Fingertips`).
+    /// Returns `nil` for a field when there is nothing meaningful to send.
     private func computeHands(
-        leftWrist: Point2?, leftWristConf: Double?,
-        rightWrist: Point2?, rightWristConf: Double?,
+        wrists: WristReadings,
         handler: VNImageRequestHandler,
         pixelBuffer: CVPixelBuffer,
         timestampSeconds: TimeInterval
     ) -> (HandState?, Fingertips?) {
         // ── PRIMARY: MediaPipe HandLandmarker ────────────────────────────────────────────────
-        // When MediaPipe is available it OWNS the hand signal: run it on the same frame and
-        // return its openness + fingertips, skipping the Vision ROI hand pass entirely. It only
-        // needs the confidently-detected body wrists (conf > 0) to assign left/right by nearest
-        // wrist; a stale/dropout wrist (conf == 0) is passed as nil so it doesn't mis-assign.
-        if mediaPipeHands.isAvailable {
-            let mpLeftWrist = (leftWristConf ?? 0) > 0 ? leftWrist : nil
-            let mpRightWrist = (rightWristConf ?? 0) > 0 ? rightWrist : nil
-            if let out = mediaPipeHands.analyze(
+        // When available it OWNS the hand signal and the Vision ROI pass is skipped. Only
+        // wrists detected this frame are passed, so a stale dropout wrist can't mis-assign.
+        // `analyze` returns nil only if MediaPipe became unavailable mid-run; the Vision path
+        // below is then the safety net.
+        if mediaPipeHands.isAvailable,
+            let out = mediaPipeHands.analyze(
                 pixelBuffer: pixelBuffer,
                 timestampSeconds: timestampSeconds,
-                leftWrist: mpLeftWrist,
-                rightWrist: mpRightWrist
-            ) {
-                return out
-            }
-            // analyze returned nil only if MediaPipe became unavailable mid-run; fall through
-            // to the Vision path below as a safety net.
+                leftWrist: wrists.freshLeft,
+                rightWrist: wrists.freshRight
+            )
+        {
+            return out
         }
+        return visionHands(wrists: wrists, handler: handler)
+    }
 
-        // ── FALLBACK: Apple Vision ROI hand pose (original path) ─────────────────────────────
-        // A wrist is usable for an ROI only if it was actually detected this frame (conf > 0);
-        // a value carried over from a dropout (conf == 0) is too stale to crop around.
-        let haveLeft = (leftWristConf ?? 0) > 0 && leftWrist != nil
-        let haveRight = (rightWristConf ?? 0) > 0 && rightWrist != nil
-
-        // Build + perform each side's ROI request. Collect into per-side requests so results
-        // stay attributed to the correct side no matter what.
-        var toPerform: [VNDetectHumanHandPoseRequest] = []
-        if haveLeft, let w = leftWrist {
-            leftHandRequest.regionOfInterest = roi(aroundTopLeftWrist: w)
-            toPerform.append(leftHandRequest)
-        }
-        if haveRight, let w = rightWrist {
-            rightHandRequest.regionOfInterest = roi(aroundTopLeftWrist: w)
-            toPerform.append(rightHandRequest)
-        }
-
-        // Fallback: if EITHER wrist is missing, run the full-frame request once so we can still
-        // pick up that hand (best-effort — lower resolution, but better than losing it).
-        let needFallback = !haveLeft || !haveRight
-        if needFallback {
-            fallbackHandRequest.regionOfInterest = CGRect(x: 0, y: 0, width: 1, height: 1)
-            toPerform.append(fallbackHandRequest)
-        }
-
-        // Nothing to do (no wrists at all AND fallback found nothing is handled below).
-        guard !toPerform.isEmpty else { return (nil, nil) }
-
-        do {
-            try handler.perform(toPerform)
-        } catch {
-            // ROI can still be rejected in edge cases; fail soft (no hands this frame).
+    /// FALLBACK: Apple Vision ROI hand pose (original path). A per-wrist ROI request runs for
+    /// each wrist detected this frame, plus one full-frame request when either is missing.
+    private func visionHands(wrists: WristReadings, handler: VNImageRequestHandler) -> (HandState?, Fingertips?) {
+        let leftROI = wrists.freshLeft.map { roi(aroundTopLeftWrist: $0) }
+        let rightROI = wrists.freshRight.map { roi(aroundTopLeftWrist: $0) }
+        // ROI can still be rejected in edge cases; fail soft (no hands this frame).
+        guard performHandRequests(leftROI: leftROI, rightROI: rightROI, handler: handler) else {
             return (nil, nil)
         }
 
-        // Resolve each side's single observation, preferring the ROI result and falling back
-        // to the nearest full-frame observation by wrist when the ROI side was absent.
+        // Prefer each side's ROI result; a side without one takes the nearest full-frame
+        // observation by its (possibly stale) wrist.
         let leftObs: VNHumanHandPoseObservation? =
-            haveLeft
+            leftROI != nil
             ? leftHandRequest.results?.first
-            : nearestFallbackObservation(toTopLeftWrist: leftWrist)
+            : nearestFallbackObservation(toTopLeftWrist: wrists.left)
         let rightObs: VNHumanHandPoseObservation? =
-            haveRight
+            rightROI != nil
             ? rightHandRequest.results?.first
-            : nearestFallbackObservation(toTopLeftWrist: rightWrist)
+            : nearestFallbackObservation(toTopLeftWrist: wrists.right)
 
-        // If literally nothing was detected on either side and neither has ever been seen,
-        // emit nothing so the packet omits `hands`/`fingertips`.
+        // Nothing on either side and never seen: omit `hands`/`fingertips` from the packet.
         if leftObs == nil && rightObs == nil && !handEstimator.hasEverSeenHand {
             return (nil, nil)
         }
 
-        // Each side's points must be lifted out of ITS OWN ROI. When a side fell back to the
-        // full-frame request, its ROI is the full frame (identity remap).
-        let leftROI = haveLeft ? leftHandRequest.regionOfInterest : fullFrameROI
-        let rightROI = haveRight ? rightHandRequest.regionOfInterest : fullFrameROI
+        // Each side's points are lifted out of ITS OWN ROI; a fallback side uses the full frame.
         let leftReading = handEstimator.analyzeSide(
             observation: leftObs, side: .left,
-            mapPoint: { self.mapRecognizedPoint($0, roi: leftROI) })
+            mapPoint: { self.mapRecognizedPoint($0, roi: leftROI ?? self.fullFrameROI) })
         let rightReading = handEstimator.analyzeSide(
             observation: rightObs, side: .right,
-            mapPoint: { self.mapRecognizedPoint($0, roi: rightROI) })
+            mapPoint: { self.mapRecognizedPoint($0, roi: rightROI ?? self.fullFrameROI) })
 
         let hands = HandState(left: leftReading.openness, right: rightReading.openness)
+        return (hands, PoseMath.fingertips(left: leftReading.indexTip, right: rightReading.indexTip))
+    }
 
-        // Fingertips: omit the whole field only when BOTH sides are nil.
-        let fingertips: Fingertips? =
-            (leftReading.indexTip == nil && rightReading.indexTip == nil)
-            ? nil
-            : Fingertips(left: leftReading.indexTip, right: rightReading.indexTip)
-
-        return (hands, fingertips)
+    /// Configure and perform this frame's hand requests. Results stay attributed to the
+    /// correct side because each side has its own request. Returns false when nothing ran
+    /// or Vision rejected the batch.
+    private func performHandRequests(leftROI: CGRect?, rightROI: CGRect?, handler: VNImageRequestHandler) -> Bool {
+        var toPerform: [VNDetectHumanHandPoseRequest] = []
+        if let leftROI {
+            leftHandRequest.regionOfInterest = leftROI
+            toPerform.append(leftHandRequest)
+        }
+        if let rightROI {
+            rightHandRequest.regionOfInterest = rightROI
+            toPerform.append(rightHandRequest)
+        }
+        // If EITHER wrist is missing, run the full-frame request once so that hand can still
+        // be picked up (best-effort: lower resolution, but better than losing it).
+        if leftROI == nil || rightROI == nil {
+            fallbackHandRequest.regionOfInterest = fullFrameROI
+            toPerform.append(fallbackHandRequest)
+        }
+        guard !toPerform.isEmpty else { return false }
+        do {
+            try handler.perform(toPerform)
+        } catch {
+            return false
+        }
+        return true
     }
 
     /// Pick the full-frame (fallback) hand observation whose wrist is nearest the given
@@ -495,16 +379,7 @@ final class PoseEstimator: @unchecked Sendable {
     ///     [0,1] (Vision REJECTS an ROI that exceeds the image — that would throw in
     ///     `perform` and we'd lose the hand).
     private func roi(aroundTopLeftWrist wrist: Point2) -> CGRect {
-        let cx = CGFloat(wrist[0])  // mirror-space x, same as Vision
-        let cy = 1.0 - CGFloat(wrist[1])  // top-left y → Vision bottom-left y
-        let half = roiSize / 2
-        // Clamp the CENTER so a full-size box fits, then place the box. This keeps the box
-        // exactly `roiSize` wide (rather than shrinking it) while staying inside [0,1].
-        let minC = half
-        let maxC = 1 - half
-        let clampedCx = min(max(cx, minC), maxC)
-        let clampedCy = min(max(cy, minC), maxC)
-        return CGRect(x: clampedCx - half, y: clampedCy - half, width: roiSize, height: roiSize)
+        PoseMath.roi(aroundTopLeftWrist: wrist, size: roiSize)
     }
 
     /// Map a raw hand `VNRecognizedPoint` to the protocol's TOP-LEFT, mirror-corrected,
@@ -523,13 +398,9 @@ final class PoseEstimator: @unchecked Sendable {
     ///   two-line change and nothing else needs to move.
     private func mapRecognizedPoint(_ point: VNRecognizedPoint, roi: CGRect) -> Point2 {
         // CONFIRMED ON DEVICE: Vision returns hand-landmark coords RELATIVE TO THE ROI
-        // (0..1 within the crop), NOT remapped to the full image. So we lift them into
-        // full-image space using the ROI rect (Vision bottom-left), then flip to top-left.
-        // For the full-frame fallback (roi = 0,0,1,1) this is an identity — so both the
-        // ROI-zoomed and fallback paths use the exact same helper.
-        let fullX = Double(roi.minX + point.location.x * roi.width)  // full-image, mirror-space
-        let fullYBottomLeft = Double(roi.minY + point.location.y * roi.height)
-        return [fullX, 1.0 - fullYBottomLeft]  // bottom-left → top-left
+        // (0..1 within the crop), NOT remapped to the full image, so lift them with the
+        // ROI rect. The full-frame fallback ROI makes this an identity apart from the flip.
+        PoseMath.liftFromROI(point.location, roi: roi)
     }
 
     /// The full-frame ROI — used for fallback (full-image) observations, where the

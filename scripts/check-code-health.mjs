@@ -170,9 +170,9 @@ function checkComplexity() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   failRegressions("Complexity", observed, {
-    violations: 2,
-    maxCcn: 22,
-    maxLength: 149,
+    violations: 0,
+    maxCcn: 15,
+    maxLength: 95,
     maxParams: 7,
   });
 }
