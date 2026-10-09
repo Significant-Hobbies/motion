@@ -26,6 +26,11 @@ target 'Motion' do
   # `MPImage`, VIDEO running mode, etc. Pinned to a minor range so `pod install` is
   # reproducible while still picking up patch fixes.
   pod 'MediaPipeTasksVision', '~> 0.10.14'
+
+  # Unit tests run inside the app host, so they reuse its pods (search paths only).
+  target 'MotionTests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|

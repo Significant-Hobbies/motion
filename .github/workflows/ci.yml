@@ -66,3 +66,18 @@ jobs:
         env:
           MOTION_INDEX_STORE: ${{ runner.temp }}/motion-derived/Index.noindex/DataStore
         run: pnpm quality:swift
+      - name: Run iOS unit tests
+        run: |
+          udid="$(xcrun simctl list devices available --json | python3 -c '
+          import json, sys
+          devices = json.load(sys.stdin)["devices"]
+          print(next(d["udid"] for runtime, items in sorted(devices.items(), reverse=True)
+                     if ".iOS-" in runtime for d in items if ".iPhone-" in d["deviceTypeIdentifier"]))
+          ')"
+          xcodebuild \
+            -workspace ios/Motion.xcworkspace \
+            -scheme Motion \
+            -destination "id=$udid" \
+            -derivedDataPath "$RUNNER_TEMP/motion-derived" \
+            CODE_SIGNING_ALLOWED=NO \
+            test
