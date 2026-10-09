@@ -44,3 +44,16 @@ post_install do |installer|
     end
   end
 end
+
+# The test bundle runs inside the app, which already force-loads MediaPipe's graph library.
+# CocoaPods copies that -force_load into the test target too; loading the graph twice aborts
+# the host at launch (duplicate class/graph registration). Keep it in the app only.
+post_integrate do |installer|
+  installer.aggregate_targets.select { |t| t.name == 'Pods-MotionTests' }.each do |target|
+    target.user_build_configurations.each_key do |config|
+      path = target.xcconfig_path(config)
+      lines = File.readlines(path).reject { |line| line.include?('-force_load') }
+      File.write(path, lines.join)
+    end
+  end
+end
