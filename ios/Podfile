@@ -26,6 +26,11 @@ target 'Motion' do
   # `MPImage`, VIDEO running mode, etc. Pinned to a minor range so `pod install` is
   # reproducible while still picking up patch fixes.
   pod 'MediaPipeTasksVision', '~> 0.10.14'
+
+  # Unit tests run inside the app host, so they reuse its pods (search paths only).
+  target 'MotionTests' do
+    inherit! :search_paths
+  end
 end
 
 post_install do |installer|
@@ -36,6 +41,19 @@ post_install do |installer|
   installer.pods_project.targets.each do |t|
     t.build_configurations.each do |config|
       config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '17.0'
+    end
+  end
+end
+
+# The test bundle runs inside the app, which already force-loads MediaPipe's graph library.
+# CocoaPods copies that -force_load into the test target too; loading the graph twice aborts
+# the host at launch (duplicate class/graph registration). Keep it in the app only.
+post_integrate do |installer|
+  installer.aggregate_targets.select { |t| t.name == 'Pods-MotionTests' }.each do |target|
+    target.user_build_configurations.each_key do |config|
+      path = target.xcconfig_path(config)
+      lines = File.readlines(path).reject { |line| line.include?('-force_load') }
+      File.write(path, lines.join)
     end
   end
 end

@@ -52,7 +52,8 @@
       "magicast>source-map-js": "1.2.2",
       "postcss>source-map-js": "1.2.2",
       "vite>postcss": "8.5.23",
-      "knip>smol-toml": "1.9.0"
+      "knip>smol-toml": "1.9.0",
+      "partykit>esbuild": "0.25.12"
     },
     "patchedDependencies": {
       "partykit@0.0.115": "patches/partykit@0.0.115.patch"
