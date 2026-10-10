@@ -16,11 +16,13 @@
 //  point). A future polish could hide chrome while `recorder.state == .recording`.
 //
 
+import SaaSMakerUI
 import SwiftUI
 
 struct GameView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.verticalSizeClass) private var vSizeClass
+    @Environment(\.smPalette) private var palette
     let session: PoseSession
 
     /// URL presented in a share/preview sheet when the user opens their saved clip.
@@ -43,21 +45,13 @@ struct GameView: View {
             )
             .ignoresSafeArea()
 
-            // 2. Camera-preview inset ON TOP — so ReplayKit captures the player with the
-            //    game. Small, corner-anchored, mirrored (the preview layer handles that).
-            VStack {
+            // Native chrome clears the camera inset even as text grows.
+            VStack(spacing: 12) {
+                controlBar
                 HStack {
                     Spacer()
                     cameraInset
                 }
-                Spacer()
-            }
-            .padding(.top, 88)  // clear the top control bar
-            .padding(.trailing, 16)
-
-            // 3. Top control bar: exit + record toggle + status.
-            VStack {
-                controlBar
                 Spacer()
             }
             .padding()
@@ -87,13 +81,13 @@ struct GameView: View {
             // If tracking drops mid-game, nudge the player (game is already paused web-side).
             if model.tracking != .ok {
                 Text(model.guidance)
-                    .font(.caption2.bold())
+                    .font(Design.detail.weight(.semibold))
                     .foregroundStyle(.white)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 3)
                     .background(.black.opacity(0.6), in: Capsule())
                     .padding(.bottom, 6)
-                    .frame(maxWidth: 180)
+                    .frame(maxWidth: insetSize.width)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }
@@ -108,77 +102,101 @@ struct GameView: View {
 
     private var insetBorderColor: Color {
         switch model.tracking {
-        case .ok: return .green
-        case .lost: return .red
-        default: return .yellow
+        case .ok: return palette.success
+        case .lost: return palette.destructive
+        default: return palette.warning
         }
     }
 
     // MARK: - Control bar
 
     private var controlBar: some View {
-        HStack(spacing: 12) {
-            // Exit back to setup.
-            Button {
-                model.exitGame()
-            } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .foregroundStyle(.white.opacity(0.85))
-            }
-
-            Spacer()
-
-            // Saved-clip quick open (after a game).
-            if case .saved = model.recorder.state, let url = model.recorder.lastSavedURL {
-                Button {
-                    shareURL = url
-                } label: {
-                    Label("Video", systemImage: "play.rectangle.fill")
-                        .font(.caption.bold())
-                        .foregroundStyle(.white)
+        SMCard(padding: 10) {
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    exitButton
+                    Spacer(minLength: 0)
+                    videoButton
+                    recordStatus
+                    recordButton
                 }
-                .buttonStyle(.bordered)
-                .tint(.white)
-            }
-
-            // Record status text (compact).
-            if let status = recordStatusText {
-                Text(status)
-                    .font(.caption.bold())
-                    .foregroundStyle(recordStatusColor)
-            }
-
-            // Record toggle (arm/disarm).
-            Button {
-                model.recorder.toggle()
-            } label: {
-                Image(systemName: model.recorder.isArmed ? "record.circle.fill" : "record.circle")
-                    .font(.title2)
-                    .foregroundStyle(model.recorder.isArmed ? .red : .white)
+                VStack(spacing: 8) {
+                    HStack {
+                        exitButton
+                        Spacer()
+                        recordButton
+                    }
+                    recordStatus
+                    videoButton
+                }
             }
         }
-        .padding(10)
-        .background(.black.opacity(0.4), in: Capsule())
+    }
+
+    private var exitButton: some View {
+        Button {
+            model.exitGame()
+        } label: {
+            Image(systemName: "xmark.circle.fill")
+                .font(.title2)
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .buttonStyle(.smLink)
+        .accessibilityLabel("Back to setup")
+    }
+
+    @ViewBuilder
+    private var videoButton: some View {
+        if case .saved = model.recorder.state, let url = model.recorder.lastSavedURL {
+            Button {
+                shareURL = url
+            } label: {
+                Label("video", systemImage: "play.rectangle.fill")
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .buttonStyle(.smOutline)
+            .accessibilityLabel("Video")
+        }
+    }
+
+    @ViewBuilder
+    private var recordStatus: some View {
+        if let status = recordStatusText {
+            SMStatusPill(status, tone: recordStatusTone)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    private var recordButton: some View {
+        Button {
+            model.recorder.toggle()
+        } label: {
+            Image(systemName: model.recorder.isArmed ? "record.circle.fill" : "record.circle")
+                .font(.title2)
+                .foregroundStyle(model.recorder.isArmed ? palette.destructive : palette.foreground)
+                .frame(minWidth: 44, minHeight: 44)
+        }
+        .buttonStyle(.smLink)
+        .accessibilityLabel(model.recorder.isArmed ? "Disarm recording" : "Arm recording")
     }
 
     private var recordStatusText: String? {
         switch model.recorder.state {
         case .idle: return nil
-        case .armed: return "Armed"
-        case .recording: return "REC"
-        case .saving: return "Saving…"
-        case .saved: return "Saved"
-        case .failed: return "Failed"
+        case .armed: return "armed"
+        case .recording: return "rec"
+        case .saving: return "saving…"
+        case .saved: return "saved"
+        case .failed: return "failed"
         }
     }
 
-    private var recordStatusColor: Color {
+    private var recordStatusTone: SMStatusPill.Tone {
         switch model.recorder.state {
-        case .recording: return .red
-        case .saved: return .green
-        case .failed: return .orange
-        default: return .white.opacity(0.85)
+        case .recording: return .danger
+        case .saved: return .success
+        case .failed: return .warning
+        default: return .neutral
         }
     }
 }

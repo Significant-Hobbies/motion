@@ -24,6 +24,11 @@ settings:
     MARKETING_VERSION: "1.0.0"
     CURRENT_PROJECT_VERSION: "1"
 
+packages:
+  SaaSMakerUI:
+    url: https://github.com/sass-maker/ui-library
+    from: 0.1.14
+
 targets:
   Motion:
     type: application
@@ -96,8 +101,9 @@ targets:
         DEVELOPMENT_TEAM: 8F7LXHTJZR
         CODE_SIGN_STYLE: Automatic
     # System frameworks. AVFoundation + Vision + SwiftUI are weak-implicit via import,
-    # but we link them explicitly for clarity. No SPM dependencies are required.
+    # but we link them explicitly for clarity. SaaSMakerUI styles native chrome only.
     dependencies:
+      - package: SaaSMakerUI
       - sdk: AVFoundation.framework
       - sdk: Vision.framework
       - sdk: CoreVideo.framework

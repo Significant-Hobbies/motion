@@ -13,6 +13,7 @@
 //  step — the web game captures its own baseline on its first frame.
 //
 
+import SaaSMakerUI
 import SwiftUI
 
 struct SetupView: View {
@@ -39,16 +40,18 @@ struct SetupView: View {
             PoseOverlay(joints: model.joints, tracking: model.tracking)
                 .ignoresSafeArea()
 
-            VStack {
-                topBar
-                Spacer()
-                // In landscape the window is short; constrain the bottom panel so it doesn't
-                // grow full-width and swallow the (already small) vertical space. In portrait
-                // it spans naturally.
-                bottomPanel
-                    .frame(maxWidth: isLandscape ? 520 : .infinity)
+            GeometryReader { geometry in
+                ScrollView {
+                    VStack(spacing: 16) {
+                        topBar
+                        Spacer(minLength: 16)
+                        bottomPanel
+                            .frame(maxWidth: isLandscape ? 520 : .infinity)
+                    }
+                    .frame(minHeight: max(0, geometry.size.height - 32))
+                    .padding()
+                }
             }
-            .padding()
         }
         // Clap → primary CTA. This view owns the setup CTA, so it maps the clap to its own
         // button: a clap acts exactly like tapping "Start", but ONLY when that button is
@@ -70,38 +73,39 @@ struct SetupView: View {
     // MARK: - Top bar
 
     private var topBar: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 12) {
-                Label(trackingText, systemImage: "circle.fill")
-                    .font(.caption.bold())
-                    .foregroundStyle(.white)
-                    .labelStyle(ChipLabelStyle(dotColor: readinessColor))
-                Spacer()
-                // Camera flip: front (selfie) ⇄ wide-rear (ultra-wide, fits the whole body
-                // from close). Switches the live session in place — no freeze — and both
-                // cameras emit the same mirror-corrected joints, so pose/games are unaffected.
-                cameraFlipButton
-                // Dev-server IP editor (repurposed old "server host" field). Only relevant
-                // when loading the game from the Vite dev server; hidden by default.
-                Button {
-                    withAnimation { showDevField.toggle() }
-                } label: {
-                    Image(systemName: "gearshape.fill")
-                        .font(.title3)
-                        .foregroundStyle(.white.opacity(0.8))
+        SMCard(padding: 10) {
+            VStack(spacing: 8) {
+                HStack(spacing: 12) {
+                    SMStatusPill(trackingText, tone: readinessTone)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Spacer()
+                    // Camera flip: front (selfie) ⇄ wide-rear (ultra-wide, fits the whole body
+                    // from close). Switches the live session in place — no freeze — and both
+                    // cameras emit the same mirror-corrected joints, so pose/games are unaffected.
+                    cameraFlipButton
+                    // Dev-server IP editor (repurposed old "server host" field). Only relevant
+                    // when loading the game from the Vite dev server; hidden by default.
+                    Button {
+                        withAnimation { showDevField.toggle() }
+                    } label: {
+                        Image(systemName: "gearshape.fill")
+                            .font(.title3)
+                            .foregroundStyle(.white.opacity(0.8))
+                            .frame(minWidth: 44, minHeight: 44)
+                    }
+                    .buttonStyle(.smLink)
+                    .accessibilityLabel("Settings")
+                }
+                // Compact status pill for the relay stream, always visible when streaming so
+                // the user can glance at connection health without opening the panel.
+                if model.streamToWebsite {
+                    streamStatusPill
+                }
+                if showDevField {
+                    settingsPanel
                 }
             }
-            // Compact status pill for the relay stream, always visible when streaming so
-            // the user can glance at connection health without opening the panel.
-            if model.streamToWebsite {
-                streamStatusPill
-            }
-            if showDevField {
-                settingsPanel
-            }
         }
-        .padding(10)
-        .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 16))
     }
 
     /// A small camera-flip button on the preview chrome. Shows the CURRENT camera and toggles
@@ -120,7 +124,9 @@ struct SetupView: View {
             )  // on wide-rear → tap to go front
             .font(.title3)
             .foregroundStyle(.white.opacity(0.8))
+            .frame(minWidth: 44, minHeight: 44)
         }
+        .buttonStyle(.smLink)
         .accessibilityLabel(
             model.cameraFacing == .front
                 ? "Switch to wide rear camera"
@@ -133,8 +139,8 @@ struct SetupView: View {
         @Bindable var model = model
         return VStack(alignment: .leading, spacing: 12) {
             VStack(alignment: .leading, spacing: 4) {
-                Text("Mac LAN IP (dev server + website relay)")
-                    .font(.caption2)
+                Text("mac LAN IP (dev server + website relay)")
+                    .font(Design.detail)
                     .foregroundStyle(.white.opacity(0.7))
                 TextField("192.168.x.x", text: $model.devServerIP)
                     .textFieldStyle(.roundedBorder)
@@ -147,19 +153,20 @@ struct SetupView: View {
 
             Toggle(isOn: $model.streamToWebsite) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Stream to website")
-                        .font(.subheadline.bold())
+                    Text("stream to website")
+                        .font(Design.heading)
                         .foregroundStyle(.white)
                     Text("Send your motion + hands to a laptop browser")
-                        .font(.caption2)
+                        .font(Design.detail)
                         .foregroundStyle(.white.opacity(0.7))
                 }
             }
-            .tint(.green)
+            .tint(Design.palette.brand)
+            .accessibilityLabel("Stream to website")
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Room code (open this on the laptop)")
-                    .font(.caption2)
+                Text("room code (open this on the laptop)")
+                    .font(Design.detail)
                     .foregroundStyle(.white.opacity(0.7))
                 TextField("MOTION", text: $model.roomCode)
                     .textFieldStyle(.roundedBorder)
@@ -174,17 +181,19 @@ struct SetupView: View {
             Divider().overlay(.white.opacity(0.2))
 
             HStack(spacing: 20) {
-                Link("Privacy", destination: URL(string: "https://motion.significanthobbies.com/privacy")!)
-                Link("Support", destination: URL(string: "https://motion.significanthobbies.com")!)
+                Link("privacy", destination: URL(string: "https://motion.significanthobbies.com/privacy")!)
+                    .accessibilityLabel("Privacy")
+                Link("support", destination: URL(string: "https://motion.significanthobbies.com")!)
+                    .accessibilityLabel("Support")
             }
-            .font(.caption.bold())
+            .font(Design.caption.weight(.semibold))
             .foregroundStyle(.white)
             .frame(maxWidth: .infinity, alignment: .leading)
 
             // Live hand-openness debug so the user can confirm open/close is detected.
             if let hands = model.hands {
                 Text(String(format: "Hands  L %.2f   R %.2f", hands.left, hands.right))
-                    .font(.caption2.monospaced())
+                    .font(Design.mono)
                     .foregroundStyle(.white.opacity(0.85))
             }
         }
@@ -192,43 +201,39 @@ struct SetupView: View {
 
     /// A single-line connection status for the relay stream.
     private var streamStatusPill: some View {
-        HStack(spacing: 6) {
-            Circle().fill(streamStatusColor).frame(width: 8, height: 8)
-            Text(streamStatusText)
-                .font(.caption2.bold())
-                .foregroundStyle(.white)
-        }
+        SMStatusPill(streamStatusText, tone: streamStatusTone)
+            .fixedSize(horizontal: false, vertical: true)
     }
 
     private var streamStatusText: String {
-        if model.peerConnected { return "Laptop connected" }
+        if model.peerConnected { return "laptop connected" }
         switch model.streamConnection {
-        case .idle: return "Off"
-        case .connecting: return "Connecting…"
-        case .connected: return "Streaming (waiting for laptop)"
-        case .reconnecting(let n): return "Reconnecting (\(n))…"
+        case .idle: return "off"
+        case .connecting: return "connecting…"
+        case .connected: return "streaming (waiting for laptop)"
+        case .reconnecting(let n): return "reconnecting (\(n))…"
         case .failed(let reason): return reason
         }
     }
 
-    private var streamStatusColor: Color {
+    private var streamStatusTone: SMStatusPill.Tone {
         // GREEN means the end-to-end link is up — i.e. the laptop peer is actually
         // connected. Relay-connected-but-no-laptop is amber ("waiting"), so the phone
         // never shows green while the laptop shows nothing. Keeps the two coherent.
-        if model.peerConnected { return .green }
+        if model.peerConnected { return .success }
         switch model.streamConnection {
-        case .connected: return .yellow  // on the relay, but the laptop isn't here yet
-        case .connecting, .reconnecting: return .yellow
-        case .failed: return .red
-        case .idle: return .gray
+        case .connected: return .warning  // on the relay, but the laptop isn't here yet
+        case .connecting, .reconnecting: return .warning
+        case .failed: return .danger
+        case .idle: return .neutral
         }
     }
 
     private var trackingText: String {
         switch model.tracking {
-        case .ok: return "Tracking you"
-        case .lost: return "No one in view"
-        default: return "Adjusting…"
+        case .ok: return "tracking you"
+        case .lost: return "no one in view"
+        default: return "adjusting…"
         }
     }
 
@@ -236,79 +241,58 @@ struct SetupView: View {
 
     @ViewBuilder
     private var bottomPanel: some View {
-        VStack(spacing: 14) {
-            HStack(spacing: 10) {
-                Circle()
-                    .fill(readinessColor)
-                    .frame(width: 14, height: 14)
-                Text(model.guidance)
-                    .font(.headline)
-                    .foregroundStyle(.white)
-                    .multilineTextAlignment(.leading)
-                Spacer()
-                // Subtle current-mode chip so the player knows why the guidance differs
-                // (full-body in portrait vs upper-body in landscape).
+        SMCard(padding: 16) {
+            VStack(spacing: 14) {
+                SMSectionHeader(model.guidance, size: 20)
                 modeChip
-            }
 
-            switch model.phase {
-            case .setup:
-                VStack(spacing: 6) {
-                    Button {
-                        model.startGame()
-                    } label: {
-                        Text(model.readyToStart ? "Start" : "Get in frame to start")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(!model.readyToStart)
-                    // Brief pulse when a clap fires the button, so a far-away user sees it land.
-                    .scaleEffect(clapPulse ? 1.04 : 1.0)
+                switch model.phase {
+                case .setup:
+                    VStack(spacing: 6) {
+                        Button {
+                            model.startGame()
+                        } label: {
+                            Text(model.readyToStart ? "start" : "get in frame to start")
+                                .fixedSize(horizontal: false, vertical: true)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                        .buttonStyle(.smBrand)
+                        .accessibilityLabel(model.readyToStart ? "Start" : "Get in frame to start")
+                        .disabled(!model.readyToStart)
+                        .opacity(model.readyToStart ? 1 : 0.45)
+                        // Brief pulse when a clap fires the button, so a far-away user sees it land.
+                        .scaleEffect(clapPulse ? 1.04 : 1.0)
 
-                    // Discoverability: once the button is clap-triggerable (ready) AND the user
-                    // is likely far from the phone (full-body mode = standing back), hint that a
-                    // clap works as a remote press. Quiet + consistent with the panel style.
-                    if model.readyToStart && model.framingMode == .fullBody {
-                        Text("👏 or clap to start")
-                            .font(.caption)
-                            .foregroundStyle(.white.opacity(0.75))
+                        // Discoverability: once the button is clap-triggerable (ready) AND the user
+                        // is likely far from the phone (full-body mode = standing back), hint that a
+                        // clap works as a remote press. Quiet + consistent with the panel style.
+                        if model.readyToStart && model.framingMode == .fullBody {
+                            Text("👏 or clap to start")
+                                .font(Design.caption)
+                                .foregroundStyle(.white.opacity(0.75))
+                        }
                     }
+
+                case .game:
+                    EmptyView()
                 }
-
-            case .game:
-                EmptyView()
             }
         }
-        .padding()
-        .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 20))
     }
 
-    /// A small pill showing the active framing mode ("Full-body" / "Upper-body"), with an
-    /// orientation-suggestive icon. Deliberately quiet — it's context, not a control.
+    /// A quiet status pill showing the active framing mode; context, not a control.
     private var modeChip: some View {
-        HStack(spacing: 4) {
-            Image(
-                systemName: model.framingMode == .fullBody
-                    ? "figure.stand"
-                    : "hand.raised.fill"
-            )
-            .font(.caption2)
-            Text(model.framingMode.label)
-                .font(.caption2.bold())
-        }
-        .foregroundStyle(.white.opacity(0.85))
-        .padding(.horizontal, 8)
-        .padding(.vertical, 4)
-        .background(.white.opacity(0.12), in: Capsule())
+        SMStatusPill(model.framingMode.label.lowercased())
+            .fixedSize(horizontal: false, vertical: true)
+            .accessibilityLabel(model.framingMode.label)
     }
 
-    private var readinessColor: Color {
+    private var readinessTone: SMStatusPill.Tone {
         switch model.tracking {
-        case .ok: return .green
-        case .lost: return .red
-        default: return .yellow
+        case .ok: return .success
+        case .lost: return .danger
+        default: return .warning
         }
     }
 }
@@ -329,15 +313,4 @@ struct ShareSheet: UIViewControllerRepresentable {
         UIActivityViewController(activityItems: items, applicationActivities: nil)
     }
     func updateUIViewController(_ controller: UIActivityViewController, context: Context) {}
-}
-
-/// Renders the label's leading dot in a role-specific color while keeping white text.
-struct ChipLabelStyle: LabelStyle {
-    let dotColor: Color
-    func makeBody(configuration: Configuration) -> some View {
-        HStack(spacing: 6) {
-            configuration.icon.foregroundStyle(dotColor).font(.system(size: 8))
-            configuration.title
-        }
-    }
 }

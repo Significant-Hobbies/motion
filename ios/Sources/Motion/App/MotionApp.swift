@@ -5,6 +5,7 @@
 //  App entry point. Owns the single `AppModel` and injects it into the view tree.
 //
 
+import SaaSMakerUI
 import SwiftUI
 
 @main
@@ -15,8 +16,7 @@ struct MotionApp: App {
         WindowGroup {
             ContentView()
                 .environment(model)
-                // Dark UI reads better next to a live camera feed.
-                .preferredColorScheme(.dark)
+                .smTheme(Design.palette)
         }
     }
 }
