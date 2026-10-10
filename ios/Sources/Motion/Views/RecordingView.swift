@@ -15,6 +15,7 @@
 //  ReplayKit — no relay, no compositing. See Recording/ScreenRecorder.swift.
 //
 
+import SaaSMakerUI
 import SwiftUI
 
 struct RecordingView: View {
@@ -26,53 +27,51 @@ struct RecordingView: View {
     var body: some View {
         let rec = model.recorder
 
-        VStack(alignment: .leading, spacing: 10) {
-            HStack(spacing: 10) {
-                Image(systemName: rec.isArmed ? "record.circle.fill" : "record.circle")
-                    .foregroundStyle(rec.isArmed ? .red : .white)
-                    .font(.title3)
-                Text("Record my play")
-                    .font(.subheadline.bold())
-                    .foregroundStyle(.white)
-                Spacer()
-                Toggle(
-                    "",
-                    isOn: Binding(
-                        get: { rec.isArmed },
-                        set: { _ in rec.toggle() }
+        SMCard(padding: 16) {
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(spacing: 10) {
+                    Image(systemName: rec.isArmed ? "record.circle.fill" : "record.circle")
+                        .foregroundStyle(rec.isArmed ? .red : .white)
+                        .font(.title3)
+                    SMSectionHeader("record my play", size: 17)
+                    Spacer()
+                    Toggle(
+                        "",
+                        isOn: Binding(
+                            get: { rec.isArmed },
+                            set: { _ in rec.toggle() }
+                        )
                     )
-                )
-                .labelsHidden()
-                .tint(.red)
-            }
-
-            if let status = statusText(for: rec.state) {
-                HStack(spacing: 8) {
-                    if case .saving = rec.state { ProgressView().controlSize(.small) }
-                    Text(status)
-                        .font(.caption)
-                        .foregroundStyle(statusColor(for: rec.state))
+                    .labelsHidden()
+                    .accessibilityLabel("Record my play")
+                    .tint(Design.palette.destructive)
                 }
-            }
 
-            if case .saved = rec.state, let url = rec.lastSavedURL {
-                Button {
-                    onOpenSaved?(url)
-                } label: {
-                    Label("Open saved video", systemImage: "play.rectangle.fill")
-                        .font(.caption.bold())
+                if let status = statusText(for: rec.state) {
+                    HStack(spacing: 8) {
+                        if case .saving = rec.state { ProgressView().controlSize(.small) }
+                        SMStatusPill(status, tone: statusTone(for: rec.state))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
                 }
-                .buttonStyle(.bordered)
-                .tint(.white)
-            }
 
-            Text("Records this device's screen — the game and your camera together — on-device only.")
-                .font(.caption2)
-                .foregroundStyle(.white.opacity(0.6))
-                .fixedSize(horizontal: false, vertical: true)
+                if case .saved = rec.state, let url = rec.lastSavedURL {
+                    Button {
+                        onOpenSaved?(url)
+                    } label: {
+                        Label("open saved video", systemImage: "play.rectangle.fill")
+                            .font(Design.caption.weight(.semibold))
+                    }
+                    .buttonStyle(.smOutline)
+                    .accessibilityLabel("Open saved video")
+                }
+
+                Text("Records this device's screen — the game and your camera together — on-device only.")
+                    .font(Design.detail)
+                    .foregroundStyle(.white.opacity(0.6))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
         }
-        .padding()
-        .background(.black.opacity(0.35), in: RoundedRectangle(cornerRadius: 16))
     }
 
     // MARK: - Status formatting
@@ -88,12 +87,12 @@ struct RecordingView: View {
         }
     }
 
-    private func statusColor(for state: ScreenRecorder.State) -> Color {
+    private func statusTone(for state: ScreenRecorder.State) -> SMStatusPill.Tone {
         switch state {
-        case .failed: return .orange
-        case .saved: return .green
-        case .recording: return .red
-        default: return .white.opacity(0.85)
+        case .failed: return .warning
+        case .saved: return .success
+        case .recording: return .danger
+        default: return .neutral
         }
     }
 }
