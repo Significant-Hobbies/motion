@@ -131,10 +131,10 @@ function checkCoverage() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   checkMinimums("TypeScript coverage", observed, {
-    lines: 46.6,
-    branches: 42.2,
-    functions: 56.0,
-    statements: 46.8,
+    lines: 48.1,
+    branches: 43.0,
+    functions: 57.8,
+    statements: 48.4,
   });
 }
 
