@@ -27,7 +27,7 @@ settings:
 packages:
   SaaSMakerUI:
     url: https://github.com/sass-maker/ui-library
-    from: 0.1.14
+    revision: 580a30e6dac470bbf45c9c4661c76169715cf538
 
 targets:
   Motion:

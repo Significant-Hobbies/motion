@@ -153,8 +153,9 @@ struct GameView: View {
             } label: {
                 Label("video", systemImage: "play.rectangle.fill")
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(minHeight: 44)
             }
-            .buttonStyle(.smOutline)
+            .buttonStyle(SMButtonStyle(.outline, size: .compact))
             .accessibilityLabel("Video")
         }
     }

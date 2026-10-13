@@ -62,6 +62,27 @@ jobs:
           -derivedDataPath "$RUNNER_TEMP/motion-derived"
           CODE_SIGNING_ALLOWED=NO
           build
+      - name: Verify shared UI resources in the built app
+        run: |
+          python3 - <<'PYTHON'
+          import json, os
+          from pathlib import Path
+          app = Path(os.environ["RUNNER_TEMP"]) / "motion-derived/Build/Products/Debug-iphonesimulator/Motion.app"
+          bundle = app / "SaaSMakerUI_SaaSMakerUI.bundle"
+          assert app.is_dir(), f"Missing built app: {app}"
+          assert bundle.is_dir(), f"Missing UI resources in app: {bundle}"
+          fonts = sorted(p.name for p in bundle.rglob("*.ttf"))
+          required = {"Figtree.ttf", "Geist.ttf", "Newsreader.ttf", "GeistMono.ttf", "InstrumentSerif-Regular.ttf", "Fraunces.ttf"}
+          assert required <= set(fonts), f"Missing bundled fonts: {required - set(fonts)}"
+          evidence = Path(os.environ["RUNNER_TEMP"]) / "compact-button-evidence"
+          evidence.mkdir(exist_ok=True)
+          (evidence / "app-resources.json").write_text(json.dumps({"app": app.name, "bundle": bundle.name, "fonts": fonts, "libraryRevision": "580a30e6dac470bbf45c9c4661c76169715cf538"}, indent=2))
+          PYTHON
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motion-compact-button-app-resources
+          path: ${{ runner.temp }}/compact-button-evidence/
+          if-no-files-found: error
       - name: Check Swift quality ratchets
         env:
           MOTION_INDEX_STORE: ${{ runner.temp }}/motion-derived/Index.noindex/DataStore
