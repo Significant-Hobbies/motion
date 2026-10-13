@@ -100,5 +100,19 @@ jobs:
             -scheme Motion \
             -destination "id=$udid" \
             -derivedDataPath "$RUNNER_TEMP/motion-derived" \
+            -enableCodeCoverage YES \
+            -resultBundlePath "$RUNNER_TEMP/motion-tests.xcresult" \
             CODE_SIGNING_ALLOWED=NO \
             test
+      - name: Capture native coverage evidence
+        run: |
+          mkdir -p "$RUNNER_TEMP/motion-coverage"
+          xcrun xccov view --report --json "$RUNNER_TEMP/motion-tests.xcresult" \
+            > "$RUNNER_TEMP/motion-coverage/coverage.json"
+          xcrun xccov view --report "$RUNNER_TEMP/motion-tests.xcresult" \
+            > "$RUNNER_TEMP/motion-coverage/coverage.txt"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: motion-native-coverage
+          path: ${{ runner.temp }}/motion-coverage/
+          if-no-files-found: error

@@ -131,10 +131,10 @@ function checkCoverage() {
   );
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
   checkMinimums("TypeScript coverage", observed, {
-    lines: 39.4,
-    branches: 37.7,
-    functions: 43.5,
-    statements: 39.9,
+    lines: 46.6,
+    branches: 42.2,
+    functions: 56.0,
+    statements: 46.8,
   });
 }
 
@@ -290,6 +290,8 @@ function checkSwiftFormat() {
   const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
+  // Retain seven protocol/dev constants matching their existing vocabulary and
+  // the URL retroactive Identifiable conformance; these are lint-only findings.
   failRegressions("Swift format", { diagnostics }, { diagnostics: 8 });
 }
 

@@ -163,6 +163,7 @@ export class CanvasRecorder {
     try {
       recorder = new MediaRecorder(stream, { mimeType: mime });
     } catch (err) {
+      this.teardownStream();
       this.setPhase("error", `MediaRecorder init failed: ${String(err)}`);
       return null;
     }
