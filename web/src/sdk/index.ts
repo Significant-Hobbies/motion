@@ -470,7 +470,7 @@ export class GameHost {
   private frame = (now: number): void => {
     if (this.stopped) return;
     // CRASH-PROOF: a throw anywhere in step/render must NOT kill the RAF loop
-    // (the reschedule is in `finally`), or the game freezes on a dead frame. Any
+    // (reschedule after error handling), or the game freezes on a dead frame. Any
     // error is captured and surfaced on-screen by `drawDiag` instead of vanishing
     // into the console (invisible inside a phone WKWebView).
     try {
@@ -501,7 +501,8 @@ export class GameHost {
         /* diagnostics must never break the game loop */
       }
     }
-    this.rafId = requestAnimationFrame(this.frame);
+    // A game or event listener may dispose the host during this frame.
+    if (!this.stopped) this.rafId = requestAnimationFrame(this.frame);
   };
 
   /**
