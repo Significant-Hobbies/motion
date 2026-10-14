@@ -119,6 +119,7 @@ type MpLandmark = { x: number; y: number; z: number };
 type MpResult = { landmarks?: MpLandmark[][] };
 type MpHandLandmarker = {
   detectForVideo(video: HTMLVideoElement, ts: number): MpResult;
+  close(): void;
 };
 
 export class WebcamController implements BodyController {
@@ -137,7 +138,9 @@ export class WebcamController implements BodyController {
   ageMs = Infinity;
 
   private video: HTMLVideoElement | null = null;
+  private stream: MediaStream | null = null;
   private landmarker: MpHandLandmarker | null = null;
+  private disposed = false;
   private status: HTMLDivElement;
   private ready = false;
   private failed = false;
@@ -186,7 +189,9 @@ export class WebcamController implements BodyController {
   private async init(): Promise<void> {
     try {
       const mp: any = await import(/* @vite-ignore */ MP_ESM);
+      if (this.disposed) return;
       const fileset = await mp.FilesetResolver.forVisionTasks(MP_WASM);
+      if (this.disposed) return;
       const make = (delegate: "GPU" | "CPU") =>
         mp.HandLandmarker.createFromOptions(fileset, {
           baseOptions: { modelAssetPath: MODEL_URL, delegate },
@@ -200,7 +205,14 @@ export class WebcamController implements BodyController {
         });
       // Prefer the GPU delegate (WebGL); fall back to CPU when WebGL is unavailable
       // (some browsers / VMs), so tracking still runs, just a little slower.
-      this.landmarker = await make("GPU").catch(() => make("CPU"));
+      const landmarker: MpHandLandmarker | null = await make("GPU").catch(() =>
+        this.disposed ? null : make("CPU")
+      );
+      if (this.disposed) {
+        landmarker?.close();
+        return;
+      }
+      this.landmarker = landmarker;
 
       // Higher capture resolution → crisper landmarks (a modern Mac handles 720p easily).
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -212,17 +224,25 @@ export class WebcamController implements BodyController {
         },
         audio: false,
       });
+      if (this.disposed) {
+        for (const track of stream.getTracks()) track.stop();
+        return;
+      }
+      this.stream = stream;
       const video = document.createElement("video");
+      this.video = video;
       video.srcObject = stream;
       video.playsInline = true;
       video.muted = true;
       await video.play();
-      this.video = video;
+      if (this.disposed) return;
       this.showPreview(video);
 
       this.ready = true;
       this.status.style.display = "none";
     } catch (err) {
+      this.releaseResources();
+      if (this.disposed) return;
       this.failed = true;
       const msg = err instanceof Error ? err.message : String(err);
       this.status.textContent = `Camera unavailable: ${msg}. Allow camera access (or pick a camera) and reload.`;
@@ -384,12 +404,20 @@ export class WebcamController implements BodyController {
     document.body.appendChild(video);
   }
 
-  dispose(): void {
-    const stream = this.video?.srcObject as MediaStream | null;
-    stream?.getTracks().forEach((t) => t.stop());
+  private releaseResources(): void {
+    this.ready = false;
+    this.stream?.getTracks().forEach((t) => t.stop());
+    this.stream = null;
+    if (this.video) this.video.srcObject = null;
     this.video?.remove();
     this.video = null;
+    this.landmarker?.close();
     this.landmarker = null;
+  }
+
+  dispose(): void {
+    this.disposed = true;
+    this.releaseResources();
     this.status.remove();
   }
 }
