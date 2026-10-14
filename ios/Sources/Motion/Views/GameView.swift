@@ -19,6 +19,11 @@
 import SaaSMakerUI
 import SwiftUI
 
+private struct SavedVideo: Identifiable {
+    let url: URL
+    var id: String { url.absoluteString }
+}
+
 struct GameView: View {
     @Environment(AppModel.self) private var model
     @Environment(\.verticalSizeClass) private var vSizeClass
@@ -26,7 +31,7 @@ struct GameView: View {
     let session: PoseSession
 
     /// URL presented in a share/preview sheet when the user opens their saved clip.
-    @State private var shareURL: URL?
+    @State private var savedVideo: SavedVideo?
 
     /// Landscape → short window. Used to size the camera inset so it stays visible and its
     /// aspect roughly matches the (now wide) upright preview instead of a tall portrait box.
@@ -59,7 +64,7 @@ struct GameView: View {
         .statusBarHidden(true)
         .persistentSystemOverlays(.hidden)
         .onDisappear { model.bridge.detach() }
-        .sheet(item: $shareURL) { url in ShareSheet(items: [url]) }
+        .sheet(item: $savedVideo) { video in ShareSheet(items: [video.url]) }
     }
 
     // MARK: - Camera inset
@@ -149,7 +154,7 @@ struct GameView: View {
     private var videoButton: some View {
         if case .saved = model.recorder.state, let url = model.recorder.lastSavedURL {
             Button {
-                shareURL = url
+                savedVideo = SavedVideo(url: url)
             } label: {
                 Label("video", systemImage: "play.rectangle.fill")
                     .fixedSize(horizontal: false, vertical: true)

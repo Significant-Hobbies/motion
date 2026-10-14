@@ -85,7 +85,7 @@
 
         private var codeBoxes: some View {
             HStack(spacing: 10) {
-                ForEach(0..<CODE_LENGTH, id: \.self) { i in
+                ForEach(0..<codeLength, id: \.self) { i in
                     let chars = Array(model.roomCode)
                     let ch = i < chars.count ? String(chars[i]) : ""
                     Text(ch)
@@ -133,8 +133,8 @@
         /// Keep only alphabet chars, uppercase, clamp to code length.
         private func sanitize(_ s: String) -> String {
             let up = s.uppercased()
-            let filtered = up.filter { CODE_ALPHABET.contains($0) }
-            return String(filtered.prefix(CODE_LENGTH))
+            let filtered = up.filter { codeAlphabet.contains($0) }
+            return String(filtered.prefix(codeLength))
         }
     }
 

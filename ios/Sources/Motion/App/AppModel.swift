@@ -106,8 +106,8 @@ final class AppModel {
 
     /// Editable dev-server IP (the Mac running `npm --workspace web run dev`). Reuses the
     /// old PairingView host field, repurposed as a "dev server IP" input. Overrides
-    /// `MAC_LAN_IP` at runtime. Ignored when `GameConfig.source == .bundled`.
-    var devServerIP: String = MAC_LAN_IP
+    /// `macLANIP` at runtime. Ignored when `GameConfig.source == .bundled`.
+    var devServerIP: String = macLANIP
 
     /// The URL the WKWebView should load, derived from the current source + dev IP.
     var gameURL: URL? {

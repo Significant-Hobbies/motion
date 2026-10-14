@@ -9,9 +9,9 @@
 //  Two source modes:
 //
 //    • DEV SERVER (default) — the Vite dev server running on your Mac:
-//          http://<MAC_LAN_IP>:5173/?transport=bridge
+//          http://<macLANIP>:5173/?transport=bridge
 //      Fast edit/reload loop while iterating on the web game. The phone and Mac must be
-//      on the same Wi-Fi. `MAC_LAN_IP` below is the obvious editable constant; it is also
+//      on the same Wi-Fi. `macLANIP` below is the obvious editable constant; it is also
 //      overridable at runtime (the old PairingView host field is repurposed as a
 //      "dev-server IP" field bound to `AppModel.devServerIP`).
 //
@@ -34,10 +34,10 @@ import Foundation
 
 /// Mac LAN IP the Vite dev server listens on. EDIT THIS to your Mac's Wi-Fi IP
 /// (System Settings → Wi-Fi → Details), or override it at runtime in the app.
-let MAC_LAN_IP = "Sarthaks-MacBook-Pronew.local"
+let macLANIP = "Sarthaks-MacBook-Pronew.local"
 
 /// Port the Vite dev server listens on (`npm --workspace web run dev`).
-let VITE_DEV_PORT = 5173
+let viteDevPort = 5173
 
 enum GameConfig {
     /// Which source the WKWebView loads. Default to the dev server for the fast loop.
@@ -75,7 +75,7 @@ enum GameConfig {
         while h.hasSuffix("/") { h = String(h.dropLast()) }
         guard !h.isEmpty else { return nil }
         // Keep an explicit port if present; otherwise add the Vite default.
-        let hostPort = h.contains(":") ? h : "\(h):\(VITE_DEV_PORT)"
+        let hostPort = h.contains(":") ? h : "\(h):\(viteDevPort)"
         return URL(string: "http://\(hostPort)/?\(bridgeQuery)")
     }
 

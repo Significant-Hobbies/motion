@@ -22,10 +22,10 @@ import Foundation
 /// Default PartyKit host. Point this at your Mac's LAN IP so a physical phone on the
 /// same Wi-Fi can reach the dev server (localhost won't resolve from the device).
 /// Override at runtime via `AppModel.partyHost`.
-let PARTY_HOST = "192.168.1.10"
+let partyHost = "192.168.1.10"
 
 /// Port PartyKit's local dev server listens on.
-let PARTY_PORT = 1999
+let partyPort = 1999
 
 /// Where the socket is in its lifecycle. Surfaced to the UI via the delegate.
 enum ConnectionState: Sendable, Equatable {
@@ -66,7 +66,7 @@ final class RoomSocket {
     // Backoff schedule (seconds), capped. Index clamps to the last entry.
     private let backoff: [UInt64] = [1, 2, 4, 8, 15, 30]
 
-    init(host: String = PARTY_HOST, code: String, session: URLSession = .shared) {
+    init(host: String = partyHost, code: String, session: URLSession = .shared) {
         self.host = host
         self.code = code.uppercased()
         self.session = session
@@ -83,7 +83,7 @@ final class RoomSocket {
         // Strip trailing slash.
         while h.hasSuffix("/") { h = String(h.dropLast()) }
         // If the host already carries a port, keep it; otherwise add the default.
-        let hostPort = h.contains(":") ? h : "\(h):\(PARTY_PORT)"
+        let hostPort = h.contains(":") ? h : "\(h):\(partyPort)"
         return URL(string: "ws://\(hostPort)/parties/main/\(code)")
     }
 
