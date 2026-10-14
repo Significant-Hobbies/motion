@@ -80,12 +80,12 @@ only the HAND signal is MediaPipe.
    It serves on port **5173**.
 
 2. Find your Mac's **LAN IP** (System Settings → Wi-Fi → Details). Either edit
-   `MAC_LAN_IP` in `Sources/Motion/Game/GameConfig.swift`, or set it at runtime in the
+   `macLANIP` in `Sources/Motion/Game/GameConfig.swift`, or set it at runtime in the
    app: on the setup screen tap the gear icon and type the IP into **Dev server IP**.
    The iOS device and Mac must be on the same Wi-Fi.
 
 3. Run on the connected device. Approve the **camera** (and, on first save, **Photos-add**)
-   prompts. The WKWebView loads `http://<MAC_LAN_IP>:5173/?transport=bridge` — an
+   prompts. The WKWebView loads `http://<macLANIP>:5173/?transport=bridge` — an
    insecure origin is fine because bridge mode does no `getUserMedia`/`MediaRecorder`.
 
 4. Play: frame your whole body → **Calibrate** → the game goes full-screen. Optionally arm

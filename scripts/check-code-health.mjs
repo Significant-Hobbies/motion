@@ -290,9 +290,7 @@ function checkSwiftFormat() {
   const diagnostics = countSwiftFormatDiagnostics(result);
   log(`Swift format debt: ${diagnostics} diagnostics.`);
   // Ratcheted legacy debt: https://github.com/Significant-Hobbies/motion/issues/26
-  // Retain seven protocol/dev constants matching their existing vocabulary and
-  // the URL retroactive Identifiable conformance; these are lint-only findings.
-  failRegressions("Swift format", { diagnostics }, { diagnostics: 8 });
+  failRegressions("Swift format", { diagnostics }, { diagnostics: 0 });
 }
 
 function checkSwiftUnused() {

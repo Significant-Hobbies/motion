@@ -299,11 +299,6 @@ struct SetupView: View {
 
 // MARK: - Share sheet
 
-/// Make `URL` usable with `.sheet(item:)`. Its absolute string is a stable identity.
-extension URL: @retroactive Identifiable {
-    public var id: String { absoluteString }
-}
-
 /// Thin `UIActivityViewController` wrapper so the user can preview/share/save the saved
 /// screen recording (the video is already in Photos; this offers quick preview + share).
 /// Shared by `SetupView` and `GameView`.

@@ -7,7 +7,7 @@
 //  PartyKit relay and the browser display accept our messages unchanged.
 //
 //  Encoding rules that keep us in sync with the TS shapes:
-//    • `v` is always the literal `PROTOCOL_VERSION` (1). We encode it explicitly.
+//    • `v` is always the literal `protocolVersion` (1). We encode it explicitly.
 //    • `type` is a fixed string per message, encoded as-is.
 //    • Joints encode as `[Double]` (a 2-element `[x, y]`) to match the TS tuple
 //      `[number, number]` — NOT as a nested {x, y} object.
@@ -20,19 +20,19 @@
 import Foundation
 
 /// Bump in lockstep with `PROTOCOL_VERSION` in protocol.ts.
-let PROTOCOL_VERSION = 1
+let protocolVersion = 1
 
 /// Length of a room code (see `CODE_LENGTH` in protocol.ts).
-let CODE_LENGTH = 6
+let codeLength = 6
 
 /// No vowels or easily-confused chars (0/O, 1/I) — matches `CODE_ALPHABET` in protocol.ts.
-let CODE_ALPHABET = "23456789BCDFGHJKLMNPQRSTVWXYZ"
+let codeAlphabet = "23456789BCDFGHJKLMNPQRSTVWXYZ"
 
 /// True if `code` is a syntactically valid room code (case-insensitive).
 func isValidRoomCode(_ code: String) -> Bool {
-    guard code.count == CODE_LENGTH else { return false }
+    guard code.count == codeLength else { return false }
     let up = code.uppercased()
-    return up.allSatisfy { CODE_ALPHABET.contains($0) }
+    return up.allSatisfy { codeAlphabet.contains($0) }
 }
 
 // MARK: - Roles
@@ -177,7 +177,7 @@ struct PosePacket: Codable, Sendable {
         seq: Int, sentAt: Double, quality: Double, joints: Joints,
         hands: HandState? = nil, fingertips: Fingertips? = nil
     ) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "pose"
         self.seq = seq
         self.sentAt = sentAt
@@ -196,7 +196,7 @@ struct StatusMessage: Codable, Sendable {
     let message: String?
 
     init(tracking: TrackingState, message: String? = nil) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "status"
         self.tracking = tracking
         self.message = message
@@ -214,7 +214,7 @@ struct CalibMessage: Codable, Sendable {
     let progress: Double  // 0..1 within the whole calibration
 
     init(stage: Stage, progress: Double) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "calib"
         self.stage = stage
         self.progress = progress
@@ -229,7 +229,7 @@ struct JoinMessage: Codable, Sendable {
     let name: String?
 
     init(role: Role = .controller, name: String? = nil) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "join"
         self.role = role
         self.name = name
@@ -243,7 +243,7 @@ struct PingMessage: Codable, Sendable {
     let t: Double
 
     init(t: Double) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "ping"
         self.t = t
     }
@@ -255,7 +255,7 @@ struct PongMessage: Codable, Sendable {
     let t: Double
 
     init(t: Double) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "pong"
         self.t = t
     }
@@ -282,7 +282,7 @@ struct RecControlMessage: Codable, Sendable {
     let anchorMs: Double
 
     init(action: Action, sessionId: String, anchorMs: Double) {
-        self.v = PROTOCOL_VERSION
+        self.v = protocolVersion
         self.type = "rec"
         self.action = action
         self.sessionId = sessionId
