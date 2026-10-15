@@ -43,6 +43,14 @@ describe("PoseController", () => {
     controller.tick(500);
     expect(controller.health).toBe("stale");
     expect(controller.ageMs).toBe(500);
+    expect(controller.trackingQuality).toBeCloseTo(0.72);
+
+    controller.tick(1400);
+    expect(controller.trackingQuality).toBe(0);
+    controller.ingest(packet({ seq: 2 }));
+    controller.tick(1401);
+    expect(controller.health).toBe("ok");
+    expect(controller.trackingQuality).toBe(0.8);
   });
 
   it("rejects duplicate packets and clamps hand confidence", () => {
@@ -71,6 +79,39 @@ describe("PoseController", () => {
 
     expect(controller.health).toBe("low_quality");
     expect(controller.trackingQuality).toBe(0.2);
+  });
+
+  it("holds intermittent arm and fingertip dropouts, then clears and reacquires them", () => {
+    const controller = new PoseController();
+    controller.tick(0);
+    controller.ingest(
+      packet({
+        joints: { ...joints, leftElbow: [0.2, 0.4] },
+        fingertips: { left: [0.1, 0.2] },
+      })
+    );
+    expect(controller.joints.leftElbow).toEqual([0.2, 0.4]);
+    expect(controller.leftFingertip).toEqual([0.1, 0.2]);
+
+    for (let seq = 2; seq <= 6; seq++) {
+      controller.ingest(packet({ seq }));
+      expect(controller.joints.leftElbow).toEqual([0.2, 0.4]);
+      expect(controller.leftFingertip).toEqual([0.1, 0.2]);
+    }
+
+    controller.ingest(packet({ seq: 7 }));
+    expect(controller.joints.leftElbow).toBeUndefined();
+    expect(controller.leftFingertip).toBeUndefined();
+
+    controller.ingest(
+      packet({
+        seq: 8,
+        joints: { ...joints, leftElbow: [0.3, 0.45] },
+        fingertips: { left: [0.4, 0.5] },
+      })
+    );
+    expect(controller.joints.leftElbow).toEqual([0.3, 0.45]);
+    expect(controller.leftFingertip).toEqual([0.4, 0.5]);
   });
 });
 
