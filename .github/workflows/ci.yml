@@ -46,7 +46,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - name: Install native quality tools
-        run: brew install xcodegen peripheryapp/periphery/periphery
+        run: brew install xcodegen periphery
       - name: Generate CocoaPods workspace
         working-directory: ios
         run: |

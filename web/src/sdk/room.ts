@@ -95,6 +95,9 @@ export class Room {
 
   private setConn(s: ConnState): void {
     this.connState = s;
+    // Presence belongs to this socket connection. Wait for the relay's fresh
+    // peer snapshot after reconnect before admitting readiness or recording.
+    if (s !== "open") this.peerConnected = false;
     this.emit("conn", s);
   }
 

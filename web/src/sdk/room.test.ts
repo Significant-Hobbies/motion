@@ -27,6 +27,12 @@ class FakeSocket extends EventTarget {
     this.readyState = state;
     this.dispatchEvent(new Event(event));
   }
+
+  receive(message: unknown): void {
+    this.dispatchEvent(
+      new MessageEvent("message", { data: JSON.stringify(message) })
+    );
+  }
 }
 
 describe("Room connection lifecycle", () => {
@@ -110,6 +116,83 @@ describe("Room connection lifecycle", () => {
     expect(room.connectionState).toBe("closed");
     vi.advanceTimersByTime(6000);
     expect(socket.sent).toHaveLength(beforeTick + 1);
+  });
+
+  it("requires a fresh controller presence snapshot after disconnect", () => {
+    const presenceAtChange: boolean[] = [];
+    room.on("conn", () => presenceAtChange.push(room.peerConnected));
+    socket.transition("open", 1);
+    socket.receive({ v: 1, type: "peer", role: "controller", connected: true });
+    expect(room.peerConnected).toBe(true);
+
+    socket.transition("close", 3);
+    expect(room.peerConnected).toBe(false);
+    socket.transition("open", 1);
+    expect(room.peerConnected).toBe(false);
+    socket.receive({ v: 1, type: "peer", role: "controller", connected: true });
+    expect(room.peerConnected).toBe(true);
+
+    socket.transition("error", 0);
+    expect(room.peerConnected).toBe(false);
+    expect(presenceAtChange).toEqual([false, false, false, false]);
+  });
+
+  it("forwards valid relay events but rejects malformed pose input", () => {
+    const poses = vi.fn();
+    const statuses = vi.fn();
+    const calibrations = vi.fn();
+    const peers = vi.fn();
+    const errors = vi.fn();
+    const stopPoses = room.on("pose", poses);
+    room.on("status", statuses);
+    room.on("calib", calibrations);
+    room.on("peer", peers);
+    room.on("error", errors);
+
+    socket.receive({ v: 1, type: "pose", seq: 1, joints: {} });
+    expect(poses).not.toHaveBeenCalled();
+    expect(room.lastPose).toBeNull();
+
+    const pose = {
+      v: 1,
+      type: "pose",
+      seq: 2,
+      sentAt: 10,
+      quality: 0.9,
+      joints: {
+        head: [0.5, 0.2],
+        torso: [0.5, 0.5],
+        leftHand: [0.3, 0.5],
+        rightHand: [0.7, 0.5],
+        leftKnee: [0.4, 0.7],
+        rightKnee: [0.6, 0.7],
+        leftFoot: [0.4, 0.9],
+        rightFoot: [0.6, 0.9],
+      },
+    };
+    socket.receive(pose);
+    expect(poses).toHaveBeenCalledWith(pose);
+    expect(room.lastPose).toEqual(pose);
+    stopPoses();
+    socket.receive({ ...pose, seq: 3 });
+    expect(poses).toHaveBeenCalledOnce();
+
+    const status = { v: 1, type: "status", tracking: "ok" };
+    const calib = { v: 1, type: "calib", stage: "done", progress: 1 };
+    const error = { v: 1, type: "error", code: "room_full", message: "Full" };
+    socket.receive(status);
+    socket.receive(calib);
+    socket.receive({ v: 1, type: "peer", role: "display", connected: true });
+    expect(room.peerConnected).toBe(false);
+    socket.receive({ v: 1, type: "peer", role: "controller", connected: true });
+    socket.receive({ v: 1, type: "pong", t: 20 });
+    socket.receive(error);
+    expect(statuses).toHaveBeenCalledWith(status);
+    expect(calibrations).toHaveBeenCalledWith(calib);
+    expect(peers).toHaveBeenCalledTimes(2);
+    expect(room.peerConnected).toBe(true);
+    expect(room.rtt).toBe(80);
+    expect(errors).toHaveBeenCalledWith(error);
   });
 
   it("sends start and recording control only while open and exposes backpressure", () => {
