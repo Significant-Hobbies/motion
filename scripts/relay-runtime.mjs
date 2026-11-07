@@ -54,7 +54,7 @@ export async function qualifyRuntime(binary, partyRequire, runtimeRequire) {
     "__dirname",
     `${bytes.slice(start, end)}\nreturn require_undici();\n//# sourceURL=${binary}`
   )(loader, binary, dirname(binary));
-  assert.equal(runtimeRequire("undici/package.json").version, "6.29.0");
+  assert.equal(runtimeRequire("undici/package.json").version, "6.29.1");
   assert.equal(entry, runtimeRequire("undici"));
   const mock = new entry.MockAgent();
   mock.disableNetConnect();
@@ -71,5 +71,5 @@ export async function qualifyRuntime(binary, partyRequire, runtimeRequire) {
   } finally {
     await mock.close();
   }
-  return "PASS: executable entry delegates to resolved Undici 6.29.0; network-disabled mock";
+  return "PASS: executable entry delegates to resolved Undici 6.29.1; network-disabled mock";
 }

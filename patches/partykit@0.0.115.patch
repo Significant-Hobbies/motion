@@ -6,7 +6,7 @@ diff --git a/dist/bin.mjs b/dist/bin.mjs
  var require_undici = __commonJS({
    "../../node_modules/undici/index.js"(exports2, module2) {
 -    "use strict";
-+    "use strict"; const motionRuntimeRequire = __require("node:module").createRequire(__require.resolve("miniflare")); if (motionRuntimeRequire("undici/package.json").version !== "6.29.0") throw new Error("Motion requires qualified Undici 6.29.0"); module2.exports = motionRuntimeRequire("undici"); return;
++    "use strict"; const motionRuntimeRequire = __require("node:module").createRequire(__require.resolve("miniflare")); if (motionRuntimeRequire("undici/package.json").version !== "6.29.1") throw new Error("Motion requires qualified Undici 6.29.1"); module2.exports = motionRuntimeRequire("undici"); return;
      var Client = require_client();
      var Dispatcher = require_dispatcher();
      var Pool = require_pool();

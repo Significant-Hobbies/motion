@@ -46,7 +46,7 @@ it("qualifies only the actual installed Undici publisher on native V8 call sites
     ...identity,
     inspectorPort,
     publisher,
-    publisherVersion: "6.29.0",
+    publisherVersion: "6.29.1",
     publisherSha256: hash(readFileSync(publisher)),
     publisherQualified: true,
   };
@@ -66,7 +66,7 @@ it("qualifies only the actual installed Undici publisher on native V8 call sites
     expect(collector.qualified()).toBe(true);
     expect(collector.observations()[0].publisher).toEqual({
       kind: "external-undici",
-      version: "6.29.0",
+      version: "6.29.1",
       sourceSha256: qualified.publisherSha256,
     });
     expect(collector.observations()[0].bundled).toBe("FALSE");
