@@ -43,6 +43,43 @@ describe("dependency audit gate", () => {
     expect(result.severe).toEqual([["123", advisory]]);
   });
 
+  it("counts each affected version when one advisory covers multiple installed versions", () => {
+    const advisory = {
+      severity: "high",
+      github_advisory_id: "GHSA-test",
+      findings: [
+        { version: "3.25.76", paths: ["server>miniflare>zod"] },
+        { version: "4.4.3", paths: [".>knip>zod", ".>another-tool>zod"] },
+      ],
+    };
+    const result = auditResult({ status: 1, advisories: { 123: advisory } });
+    const report = JSON.parse(result.stdout);
+    report.metadata.vulnerabilities.high = 2;
+
+    expect(
+      summarizeDependencyAudit({ ...result, stdout: JSON.stringify(report) })
+        .severe
+    ).toEqual([["123", advisory]]);
+  });
+
+  it.each(
+    [
+      [],
+      [{ version: "1.0.0", paths: [] }],
+      [{ version: "", paths: [".>a"] }],
+    ].map((findings) => ({ findings }))
+  )("rejects malformed installed-version findings: %j", ({ findings }) => {
+    const result = auditResult({
+      status: 1,
+      advisories: {
+        123: { severity: "high", github_advisory_id: "GHSA-test", findings },
+      },
+    });
+    expect(() => summarizeDependencyAudit(result)).toThrow(
+      /malformed advisory/u
+    );
+  });
+
   it("rejects registry errors even when they exit nonzero", () => {
     expect(() =>
       summarizeDependencyAudit(

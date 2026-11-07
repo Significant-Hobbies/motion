@@ -1,6 +1,6 @@
 # PartyKit runtime patch
 
-PartyKit 0.0.115 bundles its own Undici factories. An override for Miniflare does not update those embedded bytes. This patch delegates the single bundled Undici export to the already installed Miniflare Undici 6.29.0, with an exact version guard. It adds no dependency and preserves all generated line numbers outside the changed factory line.
+PartyKit 0.0.115 bundles its own Undici factories. An override for Miniflare does not update those embedded bytes. This patch delegates the single bundled Undici export to the already installed Miniflare Undici 6.29.1, with an exact version guard. It adds no dependency and preserves all generated line numbers outside the changed factory line.
 
 The old factories and source map remain in the package. Qualification verifies that all six outside callers use this entry, that executable entry exports are the actual resolved Undici object, and that the real inspector request publishes from the resolved request implementation. Retained inert bytes are not proof of an upstream update. Login, deployment and physical-device behavior remain unqualified.
 

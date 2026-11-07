@@ -286,7 +286,7 @@ try {
     );
     await until(() => evidence.qualified(), "qualified inspector fetch");
     checks.push(
-      "PartyKit inspector fetch through qualified resolved Undici 6.29.0"
+      "PartyKit inspector fetch through qualified resolved Undici 6.29.1"
     );
     console.log(
       JSON.stringify(

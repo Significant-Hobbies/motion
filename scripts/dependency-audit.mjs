@@ -1,6 +1,28 @@
 const severities = new Set(["info", "low", "moderate", "high", "critical"]);
 const advisoryLevels = ["critical", "high", "moderate", "low", "info"];
 
+function affectedVersionCount(advisory) {
+  if (!Object.hasOwn(advisory, "findings")) return 1;
+  const { findings } = advisory;
+  if (
+    !Array.isArray(findings) ||
+    findings.length === 0 ||
+    findings.some(
+      (finding) =>
+        typeof finding?.version !== "string" ||
+        finding.version.length === 0 ||
+        !Array.isArray(finding.paths) ||
+        finding.paths.length === 0 ||
+        finding.paths.some(
+          (path) => typeof path !== "string" || path.length === 0
+        )
+    )
+  ) {
+    throw new Error("Dependency audit returned a malformed advisory finding.");
+  }
+  return findings.length;
+}
+
 export function summarizeDependencyAudit(result) {
   if (![0, 1].includes(result.status)) {
     throw new Error(
@@ -69,9 +91,9 @@ export function summarizeDependencyAudit(result) {
   const advisoryCounts = Object.fromEntries(
     advisoryLevels.map((severity) => [
       severity,
-      Object.values(report.advisories).filter(
-        (advisory) => advisory.severity === severity
-      ).length,
+      Object.values(report.advisories)
+        .filter((advisory) => advisory.severity === severity)
+        .reduce((count, advisory) => count + affectedVersionCount(advisory), 0),
     ])
   );
   if (
