@@ -2,11 +2,22 @@
 
 Tracked by [Motion #26](https://github.com/Significant-Hobbies/motion/issues/26).
 
+## Current qualification — 7 November 2026
+
+Vitest and its coverage provider use 4.1.12. The PartyKit executable delegates to
+Undici 6.29.1, and the real local relay handshake, messaging, rejection and inspector
+checks pass with that exact client. This supersedes the 6.29.0 hold in the dated
+recheck below. Existing Zod 4 tooling resolves to 4.6.6; legacy Miniflare still
+requires Zod 3.25.76, so GHSA-mrhx-c7xc-m3w5 continues to fail the security gate.
+No incompatible Zod major or advisory waiver was introduced.
+
+## Earlier repair and rechecks
+
 The 8 October 2026 audit found critical shell-quote and high source-map-js
 advisories in existing development tooling. The critical/high gate correctly
 failed; an older green CI run did not cover the newer advisory database.
 
-Vitest and its coverage provider now use 4.1.11, and the web build uses Vite
+That repair used Vitest and its coverage provider 4.1.11, and the web build uses Vite
 7.3.7. Scoped overrides resolve existing transitive dependencies to patched
 versions without adding a production dependency:
 
