@@ -1,8 +1,19 @@
 # Development-tool dependency repair
 
-Tracked by [Motion #26](https://github.com/Significant-Hobbies/motion/issues/26).
+Tracked by [Motion #26](https://github.com/Significant-Hobbies/motion/issues/26)
+and [Motion #59](https://github.com/Significant-Hobbies/motion/issues/59).
 
-## Current qualification — 7 November 2026
+## Miniflare upgrade — 24 November 2026
+
+PartyKit remains at 0.0.115. Its local relay runtime resolves Miniflare
+4.20260730.0, which removes the legacy Zod 3 dependency. The executable
+delegates to Undici 7.30.2 through the existing exact-version guard. The
+Miniflare image tooling resolves Sharp 0.35.5 to cover both upstream libvips
+advisories affecting its original pin. PartyKit's upload forms use Node's native
+`File`, which Undici 7 no longer exports. The workspace now requires Node.js
+22.12 or later. Room URLs, protocol messages, and the production relay are unchanged.
+
+## Previous qualification — 7 November 2026
 
 Vitest and its coverage provider use 4.1.12. The PartyKit executable delegates to
 Undici 6.29.1, and the real local relay handshake, messaging, rejection and inspector

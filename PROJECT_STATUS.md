@@ -18,7 +18,7 @@ multiplayer are **v2**, already scaffolded and parked in-repo.
   (on-device pose, no ML model), **WebKit** (`WKWebView` game host), **ReplayKit**
   (screen recording), **Photos** (save).
 - **XcodeGen** — generates the Xcode project from `ios/project.yml`.
-- **Node ≥20 / npm** + **Vite + TypeScript** — the game (`web/`), served to the phone
+- **Node ≥22.12 / pnpm** + **Vite + TypeScript** — the game (`web/`), served to the phone
   WebView from the Vite dev server (or bundled for a pure app).
 - **PartyKit** (`server/`) — the v2 relay transport; also the endpoint the live
   `streamToWebsite` browser-mirror preview connects to today.
