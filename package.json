@@ -47,7 +47,9 @@
     "overrides": {
       "brace-expansion@>=5.0.0 <6.0.0": "5.0.12",
       "nanoid@>=3.0.0 <4.0.0": "3.3.18",
-      "miniflare>undici": "6.29.1",
+      "partykit>miniflare": "4.20260730.0",
+      "miniflare>undici": "7.30.2",
+      "miniflare>sharp": "0.35.5",
       "zod@>=4.0.0 <4.6.6": "4.6.6",
       "concurrently>shell-quote": "1.11.0",
       "magicast>source-map-js": "1.2.2",

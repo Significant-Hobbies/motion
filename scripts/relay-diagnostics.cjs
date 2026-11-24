@@ -149,7 +149,7 @@ function publisher(identity) {
       if (
         !dispatched ||
         file !== identity.publisher ||
-        identity.publisherVersion !== "6.29.1" ||
+        identity.publisherVersion !== "7.30.2" ||
         !digest(identity.publisherSha256)
       )
         return null;
@@ -213,11 +213,11 @@ function createCollector(port, identity) {
                   : "UNKNOWN",
                 publisher:
                   record.publisher?.kind === "external-undici" &&
-                  record.publisher.version === "6.29.1" &&
+                  record.publisher.version === "7.30.2" &&
                   digest(record.publisher.sourceSha256)
                     ? {
                         kind: "external-undici",
-                        version: "6.29.1",
+                        version: "7.30.2",
                         sourceSha256: record.publisher.sourceSha256,
                       }
                     : null,
