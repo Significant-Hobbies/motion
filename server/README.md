@@ -20,7 +20,7 @@ truth) and are imported directly.
 
 ## Develop
 
-The relay tooling requires Node.js 22 or later.
+The relay tooling requires Node.js 22.12 or later.
 
 ```bash
 pnpm install

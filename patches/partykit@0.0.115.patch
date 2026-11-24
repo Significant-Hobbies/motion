@@ -48,3 +48,46 @@ diff --git a/dist/bin.mjs b/dist/bin.mjs
          const debuggerUrl = body?.find(
            ({ id }) => id.startsWith("core:user")
          )?.webSocketDebuggerUrl;
+@@ -95692,7 +95692,7 @@
+     const uploadFileName = path16.join("upload", fileName).replace(/\\/g, "/");
+     form.set(
+       uploadFileName,
+-      new import_undici5.File([buffer], uploadFileName, {
++      new globalThis.File([buffer], uploadFileName, {
+         type: "application/wasm"
+       })
+     );
+@@ -95701,13 +95701,13 @@
+     const uploadFileName = path16.join("upload", fileName).replace(/\\/g, "/");
+     form.set(
+       uploadFileName,
+-      new import_undici5.File([buffer], uploadFileName, { type: "application/octet-stream" })
++      new globalThis.File([buffer], uploadFileName, { type: "application/octet-stream" })
+     );
+   }
+   for (const nodeModuleName of baseNodeBuiltins) {
+     form.set(
+       `upload/partykit-exposed-node-${nodeModuleName}`,
+-      new import_undici5.File(
++      new globalThis.File(
+         [
+           `export * from 'node:${nodeModuleName}';export { default } from 'node:${nodeModuleName}';`
+         ],
+@@ -95719,7 +95719,7 @@
+   for (const cfModuleName of ["email", "sockets"]) {
+     form.set(
+       `upload/partykit-exposed-cloudflare-${cfModuleName}`,
+-      new import_undici5.File(
++      new globalThis.File(
+         [`export * from 'cloudflare:${cfModuleName}';`],
+         `upload/partykit-exposed-cloudflare-${cfModuleName}`,
+         { type: "application/javascript+module" }
+@@ -96636,7 +96636,7 @@
+     const formData = new import_undici6.FormData();
+     formData.append(
+       "vectors",
+-      new import_undici6.File([batch.join(`
++      new globalThis.File([batch.join(`
+ `)], "vectors.ndjson", {
+         type: "application/x-ndjson"
+       })

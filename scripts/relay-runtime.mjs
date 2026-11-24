@@ -56,6 +56,13 @@ export async function qualifyRuntime(binary, partyRequire, runtimeRequire) {
   )(loader, binary, dirname(binary));
   assert.equal(runtimeRequire("undici/package.json").version, "7.30.2");
   assert.equal(entry, runtimeRequire("undici"));
+  const imports = [...bytes.matchAll(/\bimport_undici\d*\.(\w+)\b/gu)];
+  for (const name of new Set(imports.map((match) => match[1]))) {
+    assert.notEqual(entry[name], undefined, `Missing Undici export: ${name}`);
+  }
+  const form = new entry.FormData();
+  form.append("file", new File(["fixture"], "fixture.txt"));
+  assert.equal(await form.get("file").text(), "fixture");
   const mock = new entry.MockAgent();
   mock.disableNetConnect();
   mock
