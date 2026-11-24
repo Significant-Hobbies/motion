@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from "node:fs";
 import { channel } from "node:diagnostics_channel";
 import { createServer } from "node:http";
 import { expect, it } from "vitest";
+import { qualifyRuntime } from "../../scripts/relay-runtime.mjs";
 
 const { diagnosticCallback, createCollector, hash } = createRequire(
   import.meta.url
@@ -21,12 +22,14 @@ const request = {
 };
 
 it("qualifies only the actual installed Undici publisher on native V8 call sites", async () => {
-  const partyRequire = createRequire(
-    realpathSync(
-      new URL("../node_modules/partykit/dist/bin.mjs", import.meta.url)
-    )
+  const binary = realpathSync(
+    new URL("../node_modules/partykit/dist/bin.mjs", import.meta.url)
   );
+  const partyRequire = createRequire(binary);
   const runtimeRequire = createRequire(partyRequire.resolve("miniflare"));
+  await expect(
+    qualifyRuntime(binary, partyRequire, runtimeRequire)
+  ).resolves.toContain("PASS");
   const publisher = realpathSync(
     runtimeRequire.resolve("undici/lib/core/request.js")
   );
